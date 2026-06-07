@@ -1,38 +1,52 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import List, Optional
 
 
 class URLInput(BaseModel):
-    """Đầu vào từ người dùng (Frontend)"""
     url: str
 
 
 class CleanedContent(BaseModel):
-    """Dữ liệu sau khi cào và làm sạch"""
     title: str
     main_text: str
     source_url: str
+    run_id: Optional[str] = None
 
 
 class MasterScript(BaseModel):
-    """
-    Kịch bản quảng cáo tổng thể sau khi AI viết.
-    """
     hook: str
     body: str
     call_to_action: str
+    run_id: Optional[str] = None
 
 
 class SceneData(BaseModel):
-    """
-    Cấu trúc của một phân cảnh đơn lẻ.
-    """
     scene_number: int
     duration: int
     voiceover: str
     visual_description: str
-    image_prompt: Optional[str] = None
+    run_id: Optional[str] = None
     technical_prompt: Optional[str] = None
-    image_path: Optional[str] = None
     audio_path: Optional[str] = None
     video_path: Optional[str] = None
+
+
+class LogEvent(BaseModel):
+    timestamp: str
+    user_id: str
+    run_id: str
+    step: str
+    data: dict
+
+
+class RunLogSummary(BaseModel):
+    run_id: str
+    date: str
+    event_count: int
+    first_timestamp: Optional[str] = None
+    last_timestamp: Optional[str] = None
+    steps: List[str] = Field(default_factory=list)
+
+
+class RunLogDetail(RunLogSummary):
+    events: List[LogEvent] = Field(default_factory=list)

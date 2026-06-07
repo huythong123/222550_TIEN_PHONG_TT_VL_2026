@@ -13,10 +13,7 @@ logger = logging.getLogger(__name__)
 AUDIO_STORAGE_DIR = "storage/raw_clips"
 
 class VoiceSystem:
-    """
-    Service xử lý Text-to-Speech (TTS) sử dụng OpenAI.
-    Cung cấp API `generate_voice(text, filename)` tương thích với pipeline.
-    """
+
     def __init__(self):
         # Lazy import to avoid import-time failures
         try:
@@ -86,6 +83,30 @@ class VoiceSystem:
             scene.audio_path = file_path
             logger.info(f"[Cảnh {scene.scene_number}]: Thu âm XONG -> {file_path}")
 
+            try:
+                if getattr(scene, "duration", None) and scene.duration > 0:
+                    # lazy import to avoid import cost when not used
+                    from moviepy.editor import AudioFileClip
+
+                    try:
+                        a = AudioFileClip(file_path)
+                        audio_dur = a.duration
+                        a.close()
+                        if audio_dur > float(scene.duration):
+                            logger.info(f"[Cảnh {scene.scene_number}]: Audio dài {audio_dur}s > scene.duration {scene.duration}s — trimming.")
+                            a = AudioFileClip(file_path).subclip(0, float(scene.duration))
+                            # overwrite original file with trimmed audio (keep same path)
+                            a.write_audiofile(file_path, fps=44100, verbose=False, logger=None)
+                            try:
+                                a.close()
+                            except Exception:
+                                pass
+                    except Exception as _ex:
+                        logger.warning(f"[Cảnh {scene.scene_number}]: Không thể kiểm tra/trim audio: {_ex}")
+            except Exception:
+                # non-fatal — tiến hành tiếp tục, merge sẽ vẫn trim nếu cần
+                pass
+
         except Exception as e:
             logger.error(f"[Cảnh {scene.scene_number}]: Lỗi khi thu âm: {e}")
             scene.audio_path = None # Đánh dấu lỗi để hệ thống biết
@@ -95,7 +116,7 @@ class VoiceSystem:
     # -------------------------
     # Compatibility helper for pipeline
     # -------------------------
-    async def generate_voice(self, text: str, filename: str) -> str:
+    async def generate_voice(self, text: str, filename: str, output_dir: str | None = None) -> str:
         """
         Generate a single voice file and return its path.
         This matches the interface expected by `PipelineService`.
@@ -103,8 +124,10 @@ class VoiceSystem:
         if not text or not text.strip():
             raise ValueError("Text for TTS is empty")
 
+        target_dir = output_dir or AUDIO_STORAGE_DIR
+        os.makedirs(target_dir, exist_ok=True)
         file_name = f"{filename}.mp3"
-        file_path = os.path.join(AUDIO_STORAGE_DIR, file_name)
+        file_path = os.path.join(target_dir, file_name)
 
         try:
             if not self.client:

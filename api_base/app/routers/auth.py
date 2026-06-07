@@ -1,0 +1,287 @@
+from urllib.parse import urlencode
+
+import httpx
+from fastapi import APIRouter, HTTPException, Depends, Request
+from fastapi.responses import RedirectResponse
+from pydantic import BaseModel, EmailStr
+
+from app.config import settings
+from app.models.user_store import (
+    create_email_user,
+    find_user_by_username_or_email,
+    find_or_create_google_user,
+    resend_verification_email,
+    verify_user_email,
+)
+from app.security.auth import create_access_token, verify_password, get_current_user
+from app.models.user_store import get_user_by_id, adjust_user_credits
+from app.models.login_store import create_login_log
+from app.models.payment_store import create_payment, encode_payment_id
+
+router = APIRouter()
+GOOGLE_SCOPES = 'openid email profile'
+
+
+class LoginIn(BaseModel):
+    identifier: str
+    password: str
+
+
+class RegisterIn(BaseModel):
+    email: EmailStr
+    password: str
+
+
+class ResendVerificationIn(BaseModel):
+    email: EmailStr
+
+
+class VerifyEmailIn(BaseModel):
+    token: str
+
+
+def _build_token_payload(user: dict) -> dict:
+    return {
+        'sub': str(user.get('id')),
+        'username': user.get('username'),
+        'is_admin': user.get('is_admin', False),
+        'role': 'admin' if user.get('is_admin', False) else 'user',
+        'credits': user.get('credits', 0),
+    }
+
+
+def _frontend_redirect_url(**params: str) -> str:
+    base = settings.FRONTEND_URL.rstrip('/') + '/'
+    query = urlencode(params)
+    return f"{base}?{query}" if query else base
+
+
+@router.post('/token')
+async def login_for_token(data: LoginIn, request: Request):
+    user = find_user_by_username_or_email(data.identifier)
+    ip = None
+    ua = None
+    try:
+        ip = request.client.host if request and request.client else None
+    except Exception:
+        ip = None
+    try:
+        ua = request.headers.get('user-agent')
+    except Exception:
+        ua = None
+
+    if not user:
+        try:
+            create_login_log(None, ip, ua, None, False)
+        except Exception:
+            pass
+        raise HTTPException(status_code=400, detail='Sai tài khoản hoặc mật khẩu')
+
+    if user.get('email') and not user.get('email_verified', False):
+        try:
+            create_login_log(user.get('id'), ip, ua, None, False)
+        except Exception:
+            pass
+        raise HTTPException(status_code=403, detail='Email chưa được xác thực. Vui lòng kiểm tra Gmail hoặc gửi lại mail xác thực.')
+
+    if not verify_password(data.password, user.get('hashed_password')):
+        try:
+            create_login_log(user.get('id'), ip, ua, None, False)
+        except Exception:
+            pass
+        raise HTTPException(status_code=400, detail='Sai tài khoản hoặc mật khẩu')
+
+    token = create_access_token(_build_token_payload(user))
+    try:
+        create_login_log(user.get('id'), ip, ua, None, True)
+    except Exception:
+        pass
+    return {'access_token': token, 'token_type': 'bearer'}
+
+
+@router.post('/register')
+async def register_with_email(data: RegisterIn):
+    email = data.email.strip().lower()
+    if not email.endswith('@gmail.com') and not email.endswith('@googlemail.com'):
+        raise HTTPException(status_code=400, detail='Chỉ hỗ trợ đăng ký bằng tài khoản Gmail')
+
+    try:
+        result = create_email_user(email=email, password=data.password)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    if result.get('verification_sent'):
+        message = 'Đã gửi mail xác thực đến Gmail của bạn.'
+    else:
+        message = 'Tài khoản đã tạo. Mail xác thực chưa gửi được, hãy kiểm tra cấu hình SMTP.'
+
+    return {
+        'message': message,
+        'email': email,
+        'verification_required': True,
+        'verification_sent': result.get('verification_sent', False),
+        'verification_url': result.get('verification_url'),
+    }
+
+
+@router.post('/resend-verification')
+async def resend_verification(data: ResendVerificationIn):
+    email = data.email.strip().lower()
+    try:
+        ok = resend_verification_email(email)
+    except RuntimeError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    if not ok:
+        raise HTTPException(status_code=404, detail='Không tìm thấy tài khoản chưa xác thực với email này')
+
+    return {'message': 'Đã gửi lại mail xác thực'}
+
+
+@router.post('/verify-email')
+async def verify_email(data: VerifyEmailIn):
+    ok = verify_user_email(data.token)
+    if not ok:
+        raise HTTPException(status_code=400, detail='Mã xác thực không hợp lệ hoặc đã hết hạn')
+
+    return {'message': 'Xác thực email thành công'}
+
+
+@router.get('/google/login')
+async def google_login():
+    if not settings.GOOGLE_CLIENT_ID or not settings.GOOGLE_CLIENT_SECRET:
+        raise HTTPException(status_code=500, detail='Thiếu cấu hình Google OAuth ở backend')
+
+    params = {
+        'client_id': settings.GOOGLE_CLIENT_ID,
+        'redirect_uri': settings.GOOGLE_REDIRECT_URI,
+        'response_type': 'code',
+        'scope': GOOGLE_SCOPES,
+        'access_type': 'offline',
+        'prompt': 'consent',
+    }
+    auth_url = f"{settings.GOOGLE_AUTH_URL}?{urlencode(params)}"
+    return RedirectResponse(url=auth_url, status_code=302)
+
+
+@router.get('/google/callback')
+async def google_callback(code: str | None = None, error: str | None = None):
+    if error:
+        return RedirectResponse(
+            url=_frontend_redirect_url(error='Đăng nhập Google bị huỷ hoặc thất bại'),
+            status_code=302,
+        )
+
+    if not code:
+        return RedirectResponse(url=_frontend_redirect_url(error='Google không trả về mã xác thực'), status_code=302)
+
+    if not settings.GOOGLE_CLIENT_ID or not settings.GOOGLE_CLIENT_SECRET:
+        return RedirectResponse(url=_frontend_redirect_url(error='Thiếu cấu hình Google OAuth ở backend'), status_code=302)
+
+    try:
+        async with httpx.AsyncClient(timeout=20) as client:
+            token_response = await client.post(
+                settings.GOOGLE_TOKEN_URL,
+                data={
+                    'code': code,
+                    'client_id': settings.GOOGLE_CLIENT_ID,
+                    'client_secret': settings.GOOGLE_CLIENT_SECRET,
+                    'redirect_uri': settings.GOOGLE_REDIRECT_URI,
+                    'grant_type': 'authorization_code',
+                },
+            )
+            token_response.raise_for_status()
+            token_payload = token_response.json()
+            google_access_token = token_payload.get('access_token')
+            if not google_access_token:
+                return RedirectResponse(
+                    url=_frontend_redirect_url(error='Không lấy được access token từ Google'),
+                    status_code=302,
+                )
+
+            userinfo_response = await client.get(
+                settings.GOOGLE_USERINFO_URL,
+                headers={'Authorization': f'Bearer {google_access_token}'},
+            )
+            userinfo_response.raise_for_status()
+            profile = userinfo_response.json()
+    except httpx.HTTPError:
+        return RedirectResponse(url=_frontend_redirect_url(error='Không thể kết nối Google OAuth'), status_code=302)
+
+    email = str(profile.get('email') or '').strip().lower()
+    google_sub = str(profile.get('sub') or '').strip()
+    email_verified = bool(profile.get('email_verified'))
+
+    if not email or not google_sub:
+        return RedirectResponse(url=_frontend_redirect_url(error='Google không trả về đủ thông tin tài khoản'), status_code=302)
+
+    if not email_verified:
+        return RedirectResponse(url=_frontend_redirect_url(error='Email Google chưa được xác thực'), status_code=302)
+
+    user = find_or_create_google_user(
+        email=email,
+        google_sub=google_sub,
+        full_name=(profile.get('name') or '').strip() or None,
+    )
+    token = create_access_token(_build_token_payload(user))
+    return RedirectResponse(url=_frontend_redirect_url(token=token), status_code=302)
+
+
+@router.get('/me')
+async def api_me(payload=Depends(get_current_user)):
+    try:
+        user_id = int(payload.get('sub'))
+    except Exception:
+        raise HTTPException(status_code=400, detail='Không lấy được thông tin user')
+
+    user = get_user_by_id(user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail='Không tìm thấy người dùng')
+
+    return {
+        'id': user['id'],
+        'username': user.get('username'),
+        'email': user.get('email'),
+        'role': user.get('role', 'user'),
+        'email_verified': user.get('email_verified', False),
+        'credits': user.get('credits', 0),
+    }
+
+
+class BuyCreditsIn(BaseModel):
+    # amount in USD (dollars). Server will convert to credits using CREDITS_PER_DOLLAR
+    amount: float
+
+
+@router.post('/buy_credits')
+async def api_buy_credits(payload: BuyCreditsIn, user=Depends(get_current_user)):
+    # Create a pending payment record and return a hex id for the frontend
+    # to show as transfer content / QR. The frontend should poll the
+    # payment status endpoint to detect completion.
+    try:
+        user_id = int(user.get('sub'))
+    except Exception:
+        raise HTTPException(status_code=400, detail='Không lấy được thông tin user')
+
+    dollars = float(payload.amount or 0)
+    if dollars <= 0:
+        raise HTTPException(status_code=400, detail='Số tiền phải lớn hơn 0')
+
+    from app.config import settings
+    # Convert dollars -> amount_vnd then compute credits using VND-based formula (2000 VND -> 30 credits)
+    rate = getattr(settings, 'USD_TO_VND', 24000)
+    amount_vnd = int(round(dollars * rate))
+    try:
+        credits = int(round((float(amount_vnd) / 2000.0) * 30.0))
+    except Exception:
+        credits = 0
+    if credits <= 0:
+        raise HTTPException(status_code=400, detail='Số tiền không đủ để đổi sang credits')
+
+    p = create_payment(user_id=user_id, amount_usd=dollars, amount_vnd=amount_vnd, credits=credits, expire_minutes=getattr(settings, 'PAYMENT_EXPIRE_MINUTES', 60))
+    hex_id = encode_payment_id(p['id'])
+    qr_text = f"{getattr(settings, 'NAME_WEB', settings.APP_NAME)}NAPTOKEN{hex_id}"
+
+    return {'status': 'pending', 'hex_id': hex_id, 'amount_vnd': amount_vnd, 'qr_text': qr_text}
+
+

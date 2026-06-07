@@ -1,9 +1,85 @@
-venv/
-node_modules/
-.env
+# Python
 __pycache__/
+*.py[cod]
+*.so
+*.egg-info/
 dist/
 build/
-*.pyc
-utils/
-storage/
+htmlcov/
+.pytest_cache/
+.mypy_cache/
+.coverage
+
+# Virtual environments
+venv/
+.venv/
+env/
+api_base/venv/
+
+# Environment files
+*.env
+api_base/.env
+.env
+
+# VSCode
+.vscode/
+*.code-workspace
+
+# IDEs
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# Node / frontend
+node_modules/
+frontend/node_modules/
+dist/
+frontend/dist/
+build/
+
+# Lockfiles (optional to ignore or include)
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# Logs
+*.log
+logs/
+
+# Storage and renders (large media)
+storage/renders/
+api_base/storage/renders/
+storage/raw_clips/
+api_base/storage/raw_clips/
+
+# Media files
+*.mp4
+*.mp3
+*.wav
+*.mov
+
+# Downloads / temp
+api_base/utils/download/
+api_base/utils/upload_temp/
+
+# System files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Python packaging
+pip-wheel-metadata/
+
+# Other caches
+.idea/
+*.iml
+
+# Local config
+local_settings.py
+
+# Ignore compiled assets
+*.class
+*.jar
+
+# Notebook checkpoints
+.ipynb_checkpoints/

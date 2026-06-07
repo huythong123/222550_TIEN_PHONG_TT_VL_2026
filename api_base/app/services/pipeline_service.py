@@ -1,23 +1,10 @@
-"""
-Pipeline Service (Quản Đốc Điều Phối)
-
-Kết nối toàn bộ hệ thống Auto-TVC thành một dây chuyền tự động:
-Phase 1: Planning (Crawler -> Script -> Scene -> Prompt)
-Phase 2: Production (Voice -> Video)
-Phase 3: Post-Production (Merge -> Final MP4)
-"""
-
 import logging
 import asyncio
 from typing import Dict, Any
-
-# Import các Service Giai đoạn 1
 from app.ingestion.crawler_service import CrawlerService
 from app.services.script_service import ScriptService
 from app.services.scene_service import SceneService
 from app.services.prompt_service import PromptService
-
-# Import các Service Giai đoạn 2 & 3
 from app.services.voice_service import VoiceSystem
 from app.services.video_service import VideoSystem
 from app.services.merge_service import MergeService
@@ -26,7 +13,6 @@ logger = logging.getLogger(__name__)
 
 class PipelineService:
     def __init__(self):
-        # Khởi tạo tất cả các "Phòng ban" trong nhà máy
         self.crawler = CrawlerService()
         self.script_gen = ScriptService()
         self.scene_gen = SceneService()
@@ -36,10 +22,7 @@ class PipelineService:
         self.merger = MergeService()
 
     async def run_full_production(self, url: str) -> Dict[str, Any]:
-        """
-        Hàm thực thi toàn bộ quy trình từ URL ra Video TVC cuối cùng.
-        """
-        logger.info(f"🚀 [START] BẮT ĐẦU DÂY CHUYỀN SẢN XUẤT CHO URL: {url}")
+        logger.info(f"[START] BẮT ĐẦU DÂY CHUYỀN SẢN XUẤT CHO URL: {url}")
 
         try:
             # ==========================================
@@ -65,7 +48,7 @@ class PipelineService:
             # Tạo các Task để sinh Hình và Tiếng đồng loạt cho tất cả các cảnh
             media_tasks = [self._generate_media_for_scene(scene) for scene in final_scenes]
             
-            # asyncio.gather sẽ kích hoạt toàn bộ các API Runway và OpenAI cùng lúc!
+            # asyncio.gather sẽ kích hoạt đồng thời các API (Kling và OpenAI) cùng lúc!
             completed_scenes = await asyncio.gather(*media_tasks)
 
             # ==========================================
