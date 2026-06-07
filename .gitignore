@@ -83,3 +83,5 @@ local_settings.py
 
 # Notebook checkpoints
 .ipynb_checkpoints/
+
+scripts/
