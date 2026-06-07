@@ -85,3 +85,5 @@ local_settings.py
 .ipynb_checkpoints/
 
 scripts/
+api_base/readme.md
+api_base/test_scenes.json
