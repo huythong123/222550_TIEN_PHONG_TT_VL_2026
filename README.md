@@ -22,16 +22,16 @@ ffmpeg -version
 
 ---
 
-# 1. Clone dự án
+## 1. Clone dự án
 
 ```bash
 git clone https://github.com/huythong123/222550_TIEN_PHONG_TT_VL_2026.git
-cd AutoAds_System
+cd 222550_TIEN_PHONG_TT_VL_2026
 ```
 
 ---
 
-# 2. Tạo cơ sở dữ liệu
+## 2. Tạo cơ sở dữ liệu
 
 Đăng nhập MySQL và tạo database:
 
@@ -49,7 +49,7 @@ mysql -u root -p AutoAds_System < api_base/sql/init_mysql.sql
 
 ---
 
-# 3. Cài đặt Backend
+## 3. Cài đặt Backend
 
 Di chuyển vào thư mục backend:
 
@@ -86,7 +86,7 @@ pip install -r requirements.txt
 
 ---
 
-# 4. Tạo file cấu hình Backend
+## 4. Tạo file cấu hình Backend
 
 Tạo file:
 
@@ -141,7 +141,7 @@ NAME_WEB=AutoAds
 
 ---
 
-# 5. Chạy Backend
+## 5. Chạy Backend
 
 Trong thư mục `api_base`:
 
@@ -163,29 +163,23 @@ http://127.0.0.1:8000/docs
 
 ---
 
-# 6. Tạo tài khoản Admin
+## 6. Tạo tài khoản Admin
 
-Di chuyển đến thư mục:
+Trong thư mục `api_base`:
 
 ```bash
-cd api_base/scripts
+cd scripts
 ```
 
 Tạo tài khoản quản trị:
 
 ```bash
-python create_admin.py admin password admin@example.com
-```
-
-Ví dụ:
-
-```bash
-python create_admin.py admin 123456 admin@gmail.com
+python create_admin.py admin Admin@123 admin@example.com
 ```
 
 ---
 
-# 7. Cài đặt Frontend
+## 7. Cài đặt Frontend
 
 Mở terminal mới:
 
@@ -201,23 +195,7 @@ npm install
 
 ---
 
-# 8. Tạo file cấu hình Frontend
-
-Tạo file:
-
-```text
-frontend/.env
-```
-
-Nội dung:
-
-```env
-VITE_API_BASE=http://127.0.0.1:8000/api/v1
-```
-
----
-
-# 9. Chạy Frontend
+## 8. Chạy Frontend
 
 ```bash
 npm run dev
@@ -231,3 +209,63 @@ http://localhost:5173
 
 ---
 
+# Cấu hình API Keys
+
+## OpenAI
+
+Tạo API Key tại:
+
+https://platform.openai.com/api-keys
+
+Điền vào:
+
+```env
+OPENAI_API_KEY=your_api_key
+```
+
+---
+
+## Kling AI
+
+Đăng ký tài khoản và tạo API Key tại:
+
+https://app.klingai.com
+
+Điền vào:
+
+```env
+KLING_ACCESS_KEY=
+KLING_API_KEY=
+```
+
+---
+
+## Google OAuth
+
+Tạo OAuth Client tại:
+
+https://console.cloud.google.com
+
+Điền vào:
+
+```env
+GOOGLE_CLIENT_ID=
+GOOGLE_CLIENT_SECRET=
+```
+
+---
+
+## SePay
+
+Đăng ký tài khoản và lấy API Key tại:
+
+https://my.sepay.vn
+
+Điền vào:
+
+```env
+SEPAY_API_KEY=
+SEPAY_ACCOUNT_NUMBER=
+SEPAY_ACCOUNT_NAME=
+SEPAY_BANK_BRAND=
+```
