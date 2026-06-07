@@ -41,12 +41,6 @@ CHARACTER SET utf8mb4
 COLLATE utf8mb4_unicode_ci;
 ```
 
-Import dữ liệu:
-
-```bash
-mysql -u root -p AutoAds_System < api_base/sql/init_mysql.sql
-```
-
 ---
 
 ## 3. Cài đặt Backend
