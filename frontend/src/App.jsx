@@ -820,6 +820,16 @@ function App() {
       }
 
       setResult(res)
+      // Refresh user profile so credits update immediately after running a step
+      try {
+        if (token) {
+          const profileAfter = await getMe()
+          setMe(profileAfter)
+          setCredits(profileAfter?.credits ?? credits)
+        }
+      } catch (e) {
+        // ignore profile refresh errors
+      }
       // reset video player whenever a new result is set
       try { setPlayerKey(Date.now()) } catch (e) {}
       // Auto-save run result into chat history (shared)
