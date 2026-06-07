@@ -157,18 +157,26 @@ http://127.0.0.1:8000/docs
 
 ---
 
-## 6. Tạo tài khoản Admin
+## 6. Tài khoản Admin
 
-Trong thư mục `api_base`:
+Hệ thống đã có sẵn tài khoản quản trị mặc định:
+
+```text
+Username: admin
+Password: admin123
+```
+
+Nếu muốn tạo thêm tài khoản Admin mới, trong thư mục `api_base` chạy:
 
 ```bash
 cd scripts
+python create_admin.py <username> <password> <email>
 ```
 
-Tạo tài khoản quản trị:
+Ví dụ:
 
 ```bash
-python create_admin.py admin Admin@123 admin@example.com
+python create_admin.py admin2 Admin@123 admin2@example.com
 ```
 
 ---
