@@ -231,7 +231,7 @@ OPENAI_API_KEY=your_api_key
 
 Đăng ký tài khoản và tạo API Key tại:
 
-https://app.klingai.com
+https://kling.ai/dev/api-key
 
 Điền vào:
 
