@@ -156,6 +156,22 @@ http://127.0.0.1:8000/docs
 ```
 
 ---
+## 5.1 (Tùy chọn) Tạo gói Credits mặc định
+
+Hệ thống cho phép quản trị viên tạo, sửa và xóa các gói Credits trực tiếp trong trang quản trị.
+
+Tuy nhiên, để thuận tiện khi cài đặt lần đầu, có thể chạy script sau để tạo sẵn các gói mặc định:
+
+```bash
+cd api_base
+python scripts/seed_packages.py
+```
+
+Lưu ý:
+- Script chỉ tạo dữ liệu khi chưa có gói cước nào trong hệ thống.
+- Sau khi đăng nhập bằng tài khoản Admin, có thể quản lý gói Credits trực tiếp trong trang quản trị mà không cần chạy lại script này.
+
+---
 
 ## 6. Tài khoản Admin
 
