@@ -30,10 +30,7 @@ body {
     var(--bg-canvas);
 }
 
-h1,
-h2,
-h3,
-p {
+h1, h2, h3, p {
   margin: 0;
 }
 
@@ -339,8 +336,6 @@ button:disabled,
   box-shadow: var(--shadow);
 }
 
-
-
 .popular-badge {
   position: absolute;
   top: -14px;
@@ -355,13 +350,6 @@ button:disabled,
   box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
 }
 
-/* Header & Icon */
-
-
-
-
-
-/* List tính năng */
 .plan-feature-list {
   margin-bottom: 24px;
   text-align: left;
@@ -377,15 +365,52 @@ button:disabled,
   gap: 8px;
 }
 
+.payment-block { 
+  margin-top: 1.25rem; 
+  padding: 18px; 
+  border-radius: 14px; 
+  background: linear-gradient(180deg,#fbfffd,#f7fbf9); 
+  border: 1px solid var(--line); 
+  display:flex; 
+  gap:18px; 
+  align-items:center;
+}
 
-/* Payment block styling */
-.payment-block { margin-top: 1.25rem; padding: 18px; border-radius: 14px; background: linear-gradient(180deg,#fbfffd,#f7fbf9); border: 1px solid var(--line); display:flex; gap:18px; align-items:center }
-.payment-block .qr-img { width:200px; height:200px; border-radius:10px; border:1px solid #e6eef0 }
-.payment-block .payment-info { flex:1; min-width:260px }
-.payment-block .payment-info .status { margin-top:8px; color:var(--text-soft); font-style:italic }
-.payment-countdown { margin-top:10px }
-.payment-progress { height:8px; background:#eef6f0; border-radius:8px; overflow:hidden; margin-top:8px }
-.payment-progress .bar { height:100%; background:linear-gradient(90deg,#16a34a,#059669); width:50% }
+.payment-block .qr-img { 
+  width:200px; 
+  height:200px; 
+  border-radius:10px; 
+  border:1px solid #e6eef0;
+}
+
+.payment-block .payment-info { 
+  flex:1; 
+  min-width:260px;
+}
+
+.payment-block .payment-info .status { 
+  margin-top:8px; 
+  color:var(--text-soft); 
+  font-style:italic;
+}
+
+.payment-countdown { 
+  margin-top:10px;
+}
+
+.payment-progress { 
+  height:8px; 
+  background:#eef6f0; 
+  border-radius:8px; 
+  overflow:hidden; 
+  margin-top:8px;
+}
+
+.payment-progress .bar { 
+  height:100%; 
+  background:linear-gradient(90deg,#16a34a,#059669); 
+  width:50%;
+}
 
 .form-grid {
   display: grid;
@@ -410,14 +435,15 @@ select {
   color: var(--text-main);
 }
 
-/* Input with inline icon (eye) */
 .input-with-icon {
   position: relative;
 }
+
 .input-with-icon input {
   width: 100%;
-  padding-right: 40px; /* make room for the icon */
+  padding-right: 40px;
 }
+
 .input-with-icon .toggle-password {
   position: absolute;
   right: 8px;
@@ -432,6 +458,7 @@ select {
   cursor: pointer;
   color: var(--text-soft);
 }
+
 .input-with-icon .toggle-password:hover {
   color: var(--text-main);
 }
@@ -531,26 +558,21 @@ th {
   .shell {
     padding: 1.2rem 0.75rem 2rem;
   }
-
   .topbar {
     flex-direction: column;
   }
-
   .topbar-actions {
     width: 100%;
     justify-content: flex-start;
   }
-
   .wizard-hero {
     flex-direction: column;
     align-items: flex-start;
   }
-
   .wizard-controls {
     flex-direction: column;
     align-items: stretch;
   }
-
   .wizard-controls button {
     width: 100%;
   }
@@ -591,7 +613,7 @@ th {
   flex-direction: column;
   gap: 0.28rem;
   overflow-y: auto;
-  overflow-x: hidden; /* prevent horizontal scrollbar */
+  overflow-x: hidden;
   padding-right: 12px;
   max-height: calc(100vh - 220px);
 }
@@ -617,12 +639,6 @@ th {
 
 .chat-list-item {
   display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.chat-list-item {
-  display: flex;
   align-items: flex-start;
   gap: 0.5rem;
   width: 100%;
@@ -638,12 +654,11 @@ th {
   flex: 1 1 auto;
   min-width: 0;
   border: none;
-  white-space: normal; /* allow wrapping so full name shows */
+  white-space: normal;
   word-break: break-word;
   line-height: 1.2;
 }
 
-/* Chat history item button */
 .chat-item-btn {
   background: transparent;
   border: none;
@@ -654,13 +669,12 @@ th {
 }
 
 .chat-item-btn.active {
-  background: #e6f4ff; /* pale blue */
+  background: #e6f4ff;
   color: #08306b;
   font-weight: 700;
   box-shadow: 0 6px 14px rgba(8,48,107,0.06);
 }
 
-/* Highlight currently selected chat in the sidebar */
 .chat-list-item.active .chat-title {
   background: #f1f5f9;
   border-left: 3px solid var(--accent);
@@ -668,17 +682,15 @@ th {
   font-weight: 700;
 }
 
-
-
 .chat-delete {
   background: transparent;
   border: none;
   color: var(--text-soft);
   padding: 0 0.35rem;
   cursor: pointer;
-  margin-left: auto; /* push to far right */
+  margin-left: auto;
   flex: 0 0 auto;
-  margin-top: 0.45rem; /* align with wrapped title */
+  margin-top: 0.45rem;
 }
 
 .chat-menu-button {
@@ -761,7 +773,7 @@ th {
   display: flex;
   align-items: flex-start;
   justify-content: center;
-  margin-left: 260px; /* leave room for fixed sidebar */
+  margin-left: 260px;
   width: calc(100% - 260px);
 }
 
@@ -772,7 +784,6 @@ th {
   padding: 3rem 2rem;
 }
 
-/* Auth-only centered layout */
 .auth-shell {
   min-height: 100vh;
   display: flex;
@@ -830,6 +841,7 @@ th {
   .prompt-form input { width: 78%; }
   .center-area { padding: 3.5rem 1rem; }
 }
+
 /* ========================= */
 /* ADMIN DASHBOARD */
 /* ========================= */
@@ -866,21 +878,6 @@ th {
   font-weight: 700;
 }
 
-.admin-root .btn-primary {
-  background: var(--accent);
-  color: white;
-  border: none;
-  border-radius: 12px;
-  padding: 10px 18px;
-}
-
-.admin-root .btn-outline {
-  background: white;
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  padding: 10px 18px;
-}
-
 .admin-root .btn-link {
   border: none;
   background: transparent;
@@ -907,6 +904,7 @@ th {
 .admin-root .card h4 {
   margin-bottom: 16px;
 }
+
 .admin-sidebar{
   width:220px;
   min-width:220px;
@@ -932,13 +930,13 @@ th {
   background:var(--accent-soft);
   color:var(--accent);
 }
+
 .users-scroll{
   height: 320px;
   overflow-y: auto;
   padding-right: 6px;
 }
 
-/* Thanh cuộn đẹp hơn */
 .users-scroll::-webkit-scrollbar{
   width: 8px;
 }
@@ -956,6 +954,7 @@ th {
 .users-scroll::-webkit-scrollbar-thumb:hover{
   background: #94a3b8;
 }
+
 /* ===========================
    BUY CREDITS
 =========================== */
@@ -1083,159 +1082,30 @@ th {
   margin-bottom:20px;
 }
 
-/* mobile */
-
 @media(max-width:900px){
   .buy-plans-grid{
     grid-template-columns:1fr;
   }
 }
-/* VIDEO ADMIN */
 
-.video-detail-card{
-  background:#fff;
-  border:1px solid #e5e7eb;
-  border-radius:16px;
-  padding:20px;
-}
-
-.video-meta{
-  display:grid;
-  grid-template-columns:repeat(2,1fr);
-  gap:12px;
-  margin:16px 0;
-}
-
-.video-preview-box{
-  margin:20px 0;
-}
-
-.video-scenes-list{
-  display:flex;
-  flex-direction:column;
-  gap:12px;
-  margin-top:12px;
-}
-
-.scene-card{
-  border:1px solid #e5e7eb;
-  border-radius:12px;
-  padding:12px;
-  background:#fafafa;
-}
-
-.scene-title{
-  font-weight:700;
-  margin-bottom:6px;
-}
-
-.scene-desc{
-  color:#64748b;
-  line-height:1.5;
-}
-/* ==========================
-   ADMIN VIDEO PREVIEW
-========================== */
-
-.admin-video-preview {
-  max-width: 800px;
-  margin: 20px auto;
-  padding: 16px;
-  background: #fff;
-  border: 1px solid #e5e7eb;
-  border-radius: 16px;
-  box-shadow: 0 8px 24px rgba(0,0,0,.08);
-}
-
-.admin-video-preview video {
-  width: 100%;
-  max-height: 500px;
-  border-radius: 12px;
-  background: #000;
-}
-
-.admin-run-detail {
-  background: #fafafa;
-  border: 1px solid #e5e7eb;
-  border-radius: 16px;
-  padding: 16px;
-}
-
-.admin-run-videos {
-  display: grid;
-  grid-template-columns: repeat(auto-fill,minmax(350px,1fr));
-  gap: 16px;
-  margin-top: 16px;
-}
-
-.admin-video-card {
-  background: #fff;
-  border: 1px solid #e5e7eb;
-  border-radius: 14px;
-  padding: 14px;
-  transition: .2s;
-}
-
-.admin-video-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 20px rgba(0,0,0,.08);
-}
-
-.admin-video-title {
-  font-weight: 600;
-  margin-bottom: 10px;
-
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.admin-video-info {
-  color: #64748b;
-  font-size: 13px;
-  margin-bottom: 12px;
-}
-
-.admin-video-actions {
-  display: flex;
-  gap: 8px;
-}
-
-.admin-video-actions button {
-  flex: 1;
-  padding: 8px 12px;
-  border-radius: 10px;
-  font-size: 13px;
-}
-
-.admin-video-table td {
-  vertical-align: middle;
-}
-
-.admin-video-table td:nth-child(3) {
-  max-width: 350px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
 .admin-table {
-    width: 100%;
-    table-layout: fixed;
+  width: 100%;
+  table-layout: fixed;
 }
 
 .admin-table td {
-    overflow: hidden;
-    text-overflow: ellipsis;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .run-actions{
-    display:flex;
-    gap:8px;
-    flex-wrap:wrap;
+  display:flex;
+  gap:8px;
+  flex-wrap:wrap;
 }
 
 .run-actions button{
-    margin:0 !important;
+  margin:0 !important;
 }
 
 .video-modal-overlay{
@@ -1266,67 +1136,78 @@ th {
 }
 
 .step-events-container{
-    margin-top:24px;
-    border:1px solid #e5e7eb;
-    border-radius:16px;
-    padding:20px;
-    background:#fafafa;
+  margin-top:24px;
+  border:1px solid #e5e7eb;
+  border-radius:16px;
+  padding:20px;
+  background:#fafafa;
 }
 
 .step-events-title{
-    margin-bottom:16px;
+  margin-bottom:16px;
 }
 
 .step-event-card{
-    background:#fff;
-    border:1px solid #e5e7eb;
-    border-radius:12px;
-    padding:16px;
-    margin-bottom:12px;
+  background:#fff;
+  border:1px solid #e5e7eb;
+  border-radius:12px;
+  padding:16px;
+  margin-bottom:12px;
 }
 
 .step-event-header{
-    display:flex;
-    justify-content:space-between;
-    align-items:center;
-    margin-bottom:10px;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  margin-bottom:10px;
 }
 
 .step-event-name{
-    font-weight:600;
-    font-size:16px;
+  font-weight:600;
+  font-size:16px;
 }
 
 .step-event-time{
-    color:#64748b;
-    font-size:13px;
+  color:#64748b;
+  font-size:13px;
 }
 
 .step-event-content{
-    color:#374151;
-    margin-bottom:12px;
-    word-break:break-word;
+  color:#374151;
+  margin-bottom:12px;
+  word-break:break-word;
 }
 
 .step-event-actions{
-    display:flex;
-    gap:8px;
+  display:flex;
+  gap:8px;
 }
 
 .event-detail-pre{
-    background:#f8fafc;
-    border:1px solid #e5e7eb;
-    border-radius:12px;
-    padding:16px;
-    max-height:400px;
-    overflow:auto;
-    white-space:pre-wrap;
-    font-size:13px;
+  background:#f8fafc;
+  border:1px solid #e5e7eb;
+  border-radius:12px;
+  padding:16px;
+  max-height:400px;
+  overflow:auto;
+  white-space:pre-wrap;
+  font-size:13px;
 }
 
 .step-credit-tag{
-    margin-left:10px;
-    color:#dc2626;
-    font-size:13px;
-    font-weight:500;
+  margin-left:10px;
+  color:#dc2626;
+  font-size:13px;
+  font-weight:500;
+}
+
+.revenue-chart{
+  width:100%;
+  height:220px;
+  display:block;
+}
+
+.dashboard-chart-card{
+  display:flex;
+  flex-direction:column;
 }

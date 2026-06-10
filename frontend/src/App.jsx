@@ -119,7 +119,7 @@ function JsonBlock({ value, playerKey }) {
 
   // Fallback: pretty JSON
   // If an object contains a web-accessible video_url, show a video player
-    if (value && typeof value === 'object' && value.video_url) {
+  if (value && typeof value === 'object' && value.video_url) {
     const src = resolveVideoUrl(String(value.video_url).replace(/\\\\/g, '/'))
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
@@ -209,16 +209,16 @@ function App() {
     // Auto-estimate credits when currentStep or inputText changes (debounced)
     try {
       if (estimateTimer) clearTimeout(estimateTimer)
-    } catch (e) {}
+    } catch (e) { }
     const t = setTimeout(async () => {
       try {
         let estPayload = { step: currentStep }
-        if ([4,5,6,7].includes(currentStep)) {
+        if ([4, 5, 6, 7].includes(currentStep)) {
           try {
             const parsed = inputText ? JSON.parse(inputText) : null
             if (Array.isArray(parsed)) estPayload.scenes = parsed
             else if (parsed && parsed.scenes && Array.isArray(parsed.scenes)) estPayload.scenes = parsed.scenes
-          } catch (e) {}
+          } catch (e) { }
         }
         const r = await estimateCredits(estPayload)
         setEstimatedCredits(r?.estimated || 0)
@@ -257,24 +257,24 @@ function App() {
     setNotice('')
   }, [])
 
-    // Handle OAuth redirect token (e.g. ?token=... from backend Google OAuth callback)
-    useEffect(() => {
-      try {
-        const params = new URLSearchParams(window.location.search)
-        const tokenFromUrl = params.get('token')
-        const error = params.get('error')
-        if (tokenFromUrl) {
-          setLocalToken(tokenFromUrl)
-          setNotice('Đăng nhập Google thành công')
-          window.history.replaceState({}, document.title, window.location.pathname)
-        } else if (error) {
-          setNotice(error)
-          window.history.replaceState({}, document.title, window.location.pathname)
-        }
-      } catch (e) {
-        // ignore
+  // Handle OAuth redirect token (e.g. ?token=... from backend Google OAuth callback)
+  useEffect(() => {
+    try {
+      const params = new URLSearchParams(window.location.search)
+      const tokenFromUrl = params.get('token')
+      const error = params.get('error')
+      if (tokenFromUrl) {
+        setLocalToken(tokenFromUrl)
+        setNotice('Đăng nhập Google thành công')
+        window.history.replaceState({}, document.title, window.location.pathname)
+      } else if (error) {
+        setNotice(error)
+        window.history.replaceState({}, document.title, window.location.pathname)
       }
-    }, [])
+    } catch (e) {
+      // ignore
+    }
+  }, [])
 
   useEffect(() => {
     const storedUser = localStorage.getItem('auth_user')
@@ -298,9 +298,9 @@ function App() {
         try {
           const name = profile?.username || profile?.email || ''
           if (name) localStorage.setItem('auth_user', name)
-        } catch (e) {}
+        } catch (e) { }
         // Now that `me` is set, reload chats to pick up the user-specific key
-        try { loadChats() } catch (e) {}
+        try { loadChats() } catch (e) { }
 
         // Fetch server-side run logs for this user and merge into local chats
         try {
@@ -321,9 +321,9 @@ function App() {
               const merged = [...serverChats.filter((c) => !existingIds.has(c.id)), ...(existing || [])]
               if (merged.length) {
                 setChats(merged)
-                try { localStorage.setItem(key, JSON.stringify(merged)) } catch (e) {}
+                try { localStorage.setItem(key, JSON.stringify(merged)) } catch (e) { }
               }
-            } catch (e) {}
+            } catch (e) { }
           }
         } catch (e) {
           // ignore fetch errors
@@ -348,8 +348,6 @@ function App() {
     }
   }, [currentStep, step1Payload])
 
-  // When entering Step 3, if we have a saved Step2 payload and the input is empty,
-  // prefill the textarea with editable JSON so the user can tweak it before running.
   useEffect(() => {
     try {
       if (currentStep === 3 && step2Payload && (!inputText || inputText.trim() === '')) {
@@ -372,24 +370,22 @@ function App() {
   }, [currentStep, step3Payload, step4Payload, step5Payload, step6Payload])
 
   function chatStorageKey() {
-    // Prefer numeric user id from `me` when available to guarantee uniqueness.
     try {
       if (me && me.id) return `chats:user_${me.id}`
       const stored = localStorage.getItem('auth_user')
       if (stored && String(stored).trim() !== '') return `chats:${stored}`
-    } catch (e) {}
+    } catch (e) { }
     return 'chats:anon'
   }
 
   function persistChats(next) {
     try {
       const key = chatStorageKey()
-      try { localStorage.setItem(key, JSON.stringify(next)) } catch (e) {}
-      // Also persist to legacy username key if present to be safe for older clients
+      try { localStorage.setItem(key, JSON.stringify(next)) } catch (e) { }
       try {
         const storedName = localStorage.getItem('auth_user')
         if (storedName) localStorage.setItem(`chats:${storedName}`, JSON.stringify(next))
-      } catch (e) {}
+      } catch (e) { }
     } catch (e) {
       console.warn('persistChats failed', e)
     }
@@ -408,7 +404,7 @@ function App() {
           if (legacyRaw) {
             raw = legacyRaw
             // Persist into new key
-            try { localStorage.setItem(key, legacyRaw) } catch (e) {}
+            try { localStorage.setItem(key, legacyRaw) } catch (e) { }
           }
         }
       }
@@ -431,7 +427,7 @@ function App() {
     setSelectedChatItemId(null)
     setResult(null)
     setInputText('')
-    try { localStorage.setItem('last_new_chat', id) } catch {}
+    try { localStorage.setItem('last_new_chat', id) } catch { }
     return id
   }
 
@@ -448,7 +444,7 @@ function App() {
     setStep6Payload(null)
     setStep7Payload(null)
     setEstimatedCredits(null)
-    try { setPlayerKey(Date.now()) } catch (e) {}
+    try { setPlayerKey(Date.now()) } catch (e) { }
   }
 
   function deleteChat(id) {
@@ -592,7 +588,7 @@ function App() {
     setNotice('')
     try {
       const res = await loginUser(authEmail, password)
-        if (res?.access_token) {
+      if (res?.access_token) {
         localStorage.setItem('auth_user', authEmail)
         setLocalToken(res.access_token)
         // After login, open workspace at step 1
@@ -617,7 +613,7 @@ function App() {
   function handleLogout() {
     try {
       // Persist current chats to the appropriate storage key (user-specific if available)
-      try { localStorage.setItem(chatStorageKey(), JSON.stringify(chats || [])) } catch (e) {}
+      try { localStorage.setItem(chatStorageKey(), JSON.stringify(chats || [])) } catch (e) { }
     } finally {
       logoutUser()
       setToken(null)
@@ -654,7 +650,7 @@ function App() {
       if (!url) {
         const msg = 'Bước 1: vui lòng nhập link (URL). Không được để trống.'
         setNotice(msg)
-        try { window.alert(msg) } catch (e) {}
+        try { window.alert(msg) } catch (e) { }
         return
       }
       try {
@@ -663,7 +659,7 @@ function App() {
       } catch (err) {
         const msg = 'Bước 1: URL không hợp lệ. Vui lòng nhập định dạng link hợp lệ (ví dụ https://example.com).'
         setNotice(msg)
-        try { window.alert(msg) } catch (e) {}
+        try { window.alert(msg) } catch (e) { }
         return
       }
     }
@@ -674,7 +670,7 @@ function App() {
       if (!raw) {
         const msg = `Bước ${currentStep}: Vui lòng nhập input (JSON hoặc kết quả từ bước trước).`
         setNotice(msg)
-        try { window.alert(msg) } catch (e) {}
+        try { window.alert(msg) } catch (e) { }
         return
       }
     }
@@ -683,12 +679,12 @@ function App() {
     try {
       let estPayload = { step: currentStep }
       // For scene-based steps, try to detect scenes from inputText
-      if ([4,5,6,7].includes(currentStep)) {
+      if ([4, 5, 6, 7].includes(currentStep)) {
         try {
           const parsed = inputText ? JSON.parse(inputText) : null
           if (Array.isArray(parsed)) estPayload.scenes = parsed
           else if (parsed && parsed.scenes && Array.isArray(parsed.scenes)) estPayload.scenes = parsed.scenes
-        } catch (e) {}
+        } catch (e) { }
       }
       const estimateRes = await estimateCredits(estPayload)
       const estimated = estimateRes?.estimated || 0
@@ -696,12 +692,12 @@ function App() {
       if (typeof credits === 'number' && credits < estimated) {
         const msg = `Cần ${estimated} credits để chạy Bước ${currentStep}, nhưng bạn chỉ có ${credits} credits. Vui lòng nạp thêm.`
         setNotice(msg)
-        try { window.alert(msg) } catch (e) {}
+        try { window.alert(msg) } catch (e) { }
         return
       }
       if (estimated > 0) setNotice(`Ước tính tiêu hao: ${estimated} credits`)
     } catch (e) {
-      try { console.warn('estimateCredits failed', e) } catch (err) {}
+      try { console.warn('estimateCredits failed', e) } catch (err) { }
     }
 
     setBusy(true)
@@ -714,9 +710,9 @@ function App() {
         res = await step1Extract(inputText || 'https://example.com')
         setNotice('Bước 1: Hoàn tất cào dữ liệu')
         // Save the structured result so user can import it into Step 2 when ready
-        try { setStep1Payload(res) } catch (e) {}
+        try { setStep1Payload(res) } catch (e) { }
         // Refresh user profile to pick up credit deduction
-        try { const profile = await getMe(); setMe(profile); setCredits(profile?.credits ?? credits); } catch (e) {}
+        try { const profile = await getMe(); setMe(profile); setCredits(profile?.credits ?? credits); } catch (e) { }
         // Do NOT auto-advance to Step 2; user should manually navigate or import JSON
       } else if (currentStep === 2) {
         setNotice('Bước 2: Đang sinh kịch bản tổng thể...')
@@ -730,12 +726,12 @@ function App() {
           const msg = 'Bước 2: Cần MasterScript (JSON). Vui lòng dán JSON hoặc chạy Bước 1 trước.'
           setNotice(msg)
           setBusy(false)
-          try { window.alert(msg) } catch (e) {}
+          try { window.alert(msg) } catch (e) { }
           return
         }
         res = await step2Script(payload)
         setNotice('Bước 2: Kịch bản tạo xong')
-        try { setStep2Payload(res) } catch (e) {}
+        try { setStep2Payload(res) } catch (e) { }
       } else if (currentStep === 3) {
         setNotice('Bước 3: Đang chia kịch bản thành phân cảnh...')
         let payload = null
@@ -744,12 +740,12 @@ function App() {
           const msg = 'Bước 3: Cần MasterScript (JSON). Vui lòng dán JSON từ Bước 2.'
           setNotice(msg)
           setBusy(false)
-          try { window.alert(msg) } catch (e) {}
+          try { window.alert(msg) } catch (e) { }
           return
         }
         res = await step3Scene(payload, targetDuration)
         setNotice('Bước 3: Phân cảnh hoàn tất')
-        try { setStep3Payload(res) } catch (e) {}
+        try { setStep3Payload(res) } catch (e) { }
       } else if (currentStep === 4) {
         setNotice('Bước 4: Đang sinh prompt (image & technical) cho phân cảnh...')
         let payload = null
@@ -758,12 +754,12 @@ function App() {
           const msg = 'Bước 4: Cần danh sách `scenes` (JSON). Vui lòng dán JSON từ Bước 3.'
           setNotice(msg)
           setBusy(false)
-          try { window.alert(msg) } catch (e) {}
+          try { window.alert(msg) } catch (e) { }
           return
         }
         res = await step4Prompt(payload)
         setNotice('Bước 4: Hoàn tất tạo prompt')
-        try { setStep4Payload(res) } catch (e) {}
+        try { setStep4Payload(res) } catch (e) { }
       } else if (currentStep === 5) {
         // Voice generation: expects scenes (from step4 prompt)
         let payload = []
@@ -773,16 +769,16 @@ function App() {
           payload = []
         }
         if (!payload || !payload.length) {
-           const msg = 'Bước 5 cần danh sách phân cảnh (JSON). Vui lòng chạy bước 3/4 hoặc nhập JSON scenes.'
-           setNotice(msg)
-           setBusy(false)
-           try { window.alert(msg) } catch (e) {}
-           return
+          const msg = 'Bước 5 cần danh sách phân cảnh (JSON). Vui lòng chạy bước 3/4 hoặc nhập JSON scenes.'
+          setNotice(msg)
+          setBusy(false)
+          try { window.alert(msg) } catch (e) { }
+          return
         }
         setNotice(`Bước 5: Đang tạo giọng đọc cho ${payload.length} phân cảnh...`)
         res = await step5Voice(payload)
         setNotice('Bước 5: Hoàn tất tạo giọng đọc')
-        try { setStep5Payload(res) } catch (e) {}
+        try { setStep5Payload(res) } catch (e) { }
       } else if (currentStep === 6) {
         // Video generation: expects scenes
         let payload = []
@@ -792,27 +788,27 @@ function App() {
           payload = []
         }
         if (!payload || !payload.length) {
-           const msg = 'Bước 6 cần danh sách phân cảnh (JSON). Vui lòng chạy bước 3/4 hoặc nhập JSON scenes.'
-           setNotice(msg)
-           setBusy(false)
-           try { window.alert(msg) } catch (e) {}
-           return
+          const msg = 'Bước 6 cần danh sách phân cảnh (JSON). Vui lòng chạy bước 3/4 hoặc nhập JSON scenes.'
+          setNotice(msg)
+          setBusy(false)
+          try { window.alert(msg) } catch (e) { }
+          return
         }
         setNotice(`Bước 6: Đang render video cho ${payload.length} phân cảnh (có thể mất nhiều thời gian)...`)
         res = await step6Video(payload)
         setNotice('Bước 6: Hoàn tất render video (bản nháp)')
-        try { setStep6Payload(res) } catch (e) {}
+        try { setStep6Payload(res) } catch (e) { }
       } else if (currentStep === 7) {
         // Merge: use the result from step6 automatically (no manual input required)
         const scenes = Array.isArray(step6Payload) ? step6Payload : (Array.isArray(result) ? result : [])
         const tvcTitle = (step6Payload && step6Payload.tvc_title) || (result && result.tvc_title) || 'AutoAds Product'
         const runId = (step6Payload && step6Payload.run_id) || (scenes && scenes.length ? scenes[0].run_id : null) || null
         if (!scenes || !scenes.length) {
-           const msg = 'Bước 7 cần danh sách phân cảnh để ghép video. Vui lòng chạy các bước trước.'
-           setNotice(msg)
-           setBusy(false)
-           try { window.alert(msg) } catch (e) {}
-           return
+          const msg = 'Bước 7 cần danh sách phân cảnh để ghép video. Vui lòng chạy các bước trước.'
+          setNotice(msg)
+          setBusy(false)
+          try { window.alert(msg) } catch (e) { }
+          return
         }
         setNotice('Bước 7: Đang dựng phim (merge audio & video)...')
         res = await step7Merge(tvcTitle, scenes, runId)
@@ -831,7 +827,7 @@ function App() {
         // ignore profile refresh errors
       }
       // reset video player whenever a new result is set
-      try { setPlayerKey(Date.now()) } catch (e) {}
+      try { setPlayerKey(Date.now()) } catch (e) { }
       // Auto-save run result into chat history (shared)
       if (res) {
         const entry = { id: Date.now().toString(), step: currentStep, input: inputText, result: res, created_at: new Date().toISOString() }
@@ -845,10 +841,10 @@ function App() {
               if (currentStep === 1 && wasEmpty && res && res.title) {
                 const next = chats.map((c) => (c.id === selectedChatId ? { ...c, title: res.title } : c))
                 setChats(next)
-                try { persistChats(next) } catch (e) {}
+                try { persistChats(next) } catch (e) { }
               }
             }
-          } catch (e) {}
+          } catch (e) { }
           addToChat(selectedChatId, entry)
         } else {
           const chatId = Date.now().toString()
@@ -869,9 +865,9 @@ function App() {
               usedChatId = chats[placeholderIndex].id
               const next = chats.map((c) => (c.id === usedChatId ? { ...c, title: preferredTitle } : c))
               setChats(next)
-              try { persistChats(next) } catch (e) {}
+              try { persistChats(next) } catch (e) { }
             }
-          } catch (e) {}
+          } catch (e) { }
 
           if (!usedChatId) {
             const newChat = { id: chatId, title: preferredTitle, created_at: new Date().toISOString(), items: [entry] }
@@ -919,15 +915,15 @@ function App() {
                   >
                     {passwordVisible ? (
                       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M3 3L21 21" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                        <path d="M9.88 9.88A3 3 0 0114.12 14.12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                        <path d="M10.94 5.11C12.2 5 13.58 5.32 15 6.05C18 7.6 20 10.5 21 12c-.72 1.3-2 3.2-4 4.6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                        <path d="M3 12c1 1.5 3 4 6 5.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                        <path d="M3 3L21 21" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                        <path d="M9.88 9.88A3 3 0 0114.12 14.12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                        <path d="M10.94 5.11C12.2 5 13.58 5.32 15 6.05C18 7.6 20 10.5 21 12c-.72 1.3-2 3.2-4 4.6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                        <path d="M3 12c1 1.5 3 4 6 5.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                       </svg>
                     ) : (
                       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                        <path d="M12 15a3 3 0 100-6 3 3 0 000 6z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                        <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                        <path d="M12 15a3 3 0 100-6 3 3 0 000 6z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                       </svg>
                     )}
                   </button>
@@ -949,7 +945,7 @@ function App() {
 
   return (
     <div className="chat-shell">
-          <aside className="chat-sidebar">
+      <aside className="chat-sidebar">
         <div className="sidebar-top">
           {me && me.role === 'admin' ? (
             <div style={{ padding: '1rem' }}>
@@ -1003,9 +999,9 @@ function App() {
         </div>
         <div className="sidebar-bottom">
           <div className="user">
-            <div style={{display: 'flex', flexDirection: 'column'}}>
-              <div style={{fontWeight: 600}}>{accountLabel}</div>
-              <small style={{color: 'var(--text-soft)'}}>{localStorage.getItem('auth_user') || ''}</small>
+            <div style={{ display: 'flex', flexDirection: 'column' }}>
+              <div style={{ fontWeight: 600 }}>{accountLabel}</div>
+              <small style={{ color: 'var(--text-soft)' }}>{localStorage.getItem('auth_user') || ''}</small>
               {/* Token is kept in-memory only and not shown in UI for security */}
               {credits != null && credits !== 0 ? (
                 <div style={{ marginTop: '0.6rem' }}>
@@ -1030,31 +1026,31 @@ function App() {
 
       <main className="chat-main">
         <div className="center-area">
-            <section className="card">
-              <div className="row-between">
-                <h2>Auto Ads System</h2>
-                {notice ? <div style={{ marginTop: '0.6rem', padding: '0.6rem', borderRadius: 6, background: 'var(--card-bg)', border: '1px solid var(--border)', color: notice.startsWith('Bước') ? 'var(--text)' : 'var(--text)', fontWeight: 600 }}>{notice}</div> : null}
-              </div>
+          <section className="card">
+            <div className="row-between">
+              <h2>Auto Ads System</h2>
+              {notice ? <div style={{ marginTop: '0.6rem', padding: '0.6rem', borderRadius: 6, background: 'var(--card-bg)', border: '1px solid var(--border)', color: notice.startsWith('Bước') ? 'var(--text)' : 'var(--text)', fontWeight: 600 }}>{notice}</div> : null}
+            </div>
 
-              {me && me.role === 'admin' ? (
-                <AdminPanel />
-              ) : showAdminPanel ? (
-                <AdminPanel />
-              ) : showBuyPage ? (
-                <div style={{ marginTop: '1rem' }}>
-                  <div style={{ textAlign: 'left', marginBottom: '0.8rem' }}>
-                    <button onClick={() => setShowBuyPage(false)} style={{ display: 'inline-block', padding: '0.4rem 0.6rem', borderRadius: 6 }}>← Quay lại</button>
-                  </div>
-                  <div style={{ marginTop: '0.6rem' }}>
-                    <BuyCredits pageMode onBought={(c) => { setCredits(c); setShowBuyPage(false); }} onClose={() => setShowBuyPage(false)} />
-                  </div>
+            {me && me.role === 'admin' ? (
+              <AdminPanel />
+            ) : showAdminPanel ? (
+              <AdminPanel />
+            ) : showBuyPage ? (
+              <div style={{ marginTop: '1rem' }}>
+                <div style={{ textAlign: 'left', marginBottom: '0.8rem' }}>
+                  <button onClick={() => setShowBuyPage(false)} style={{ display: 'inline-block', padding: '0.4rem 0.6rem', borderRadius: 6 }}>← Quay lại</button>
                 </div>
-              ) : (
+                <div style={{ marginTop: '0.6rem' }}>
+                  <BuyCredits pageMode onBought={(c) => { setCredits(c); setShowBuyPage(false); }} onClose={() => setShowBuyPage(false)} />
+                </div>
+              </div>
+            ) : (
 
               <div style={{ marginTop: '1rem' }}>
                 <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                  {[1,2,3,4,5,6,7].map((s) => (
-                    <button key={s} onClick={() => { setCurrentStep(s); setResult(null); }} className={currentStep===s? 'tab active':'tab'}>
+                  {[1, 2, 3, 4, 5, 6, 7].map((s) => (
+                    <button key={s} onClick={() => { setCurrentStep(s); setResult(null); }} className={currentStep === s ? 'tab active' : 'tab'}>
                       Bước {s}
                     </button>
                   ))}
@@ -1084,7 +1080,7 @@ function App() {
                         <pre style={{ maxHeight: 160, overflow: 'auto', whiteSpace: 'pre-wrap' }}>{JSON.stringify(step1Payload, null, 2)}</pre>
                       </div>
                       <div style={{ marginTop: '0.5rem' }}>
-                        <button onClick={() => { try { setInputText(JSON.stringify(step1Payload, null, 2)); setNotice('Đã điền JSON của Bước 1 vào input.'); setCurrentStep(2); setResult(null); } catch(e){} }}>Sử dụng JSON này cho Bước 2</button>
+                        <button onClick={() => { try { setInputText(JSON.stringify(step1Payload, null, 2)); setNotice('Đã điền JSON của Bước 1 vào input.'); setCurrentStep(2); setResult(null); } catch (e) { } }}>Sử dụng JSON này cho Bước 2</button>
                         <button style={{ marginLeft: '0.5rem' }} onClick={() => { setStep1Payload(null); setNotice('Đã bỏ dữ liệu nguồn từ Bước 1') }}>Bỏ</button>
                       </div>
                     </div>
@@ -1097,7 +1093,7 @@ function App() {
                         <pre style={{ maxHeight: 160, overflow: 'auto', whiteSpace: 'pre-wrap' }}>{JSON.stringify(step2Payload, null, 2)}</pre>
                       </div>
                       <div style={{ marginTop: '0.5rem' }}>
-                        <button onClick={() => { try { setInputText(JSON.stringify(step2Payload, null, 2)); setNotice('Đã điền JSON của Bước 2 vào input.'); setCurrentStep(3); setResult(null); } catch(e){} }}>Sử dụng JSON này cho Bước 3</button>
+                        <button onClick={() => { try { setInputText(JSON.stringify(step2Payload, null, 2)); setNotice('Đã điền JSON của Bước 2 vào input.'); setCurrentStep(3); setResult(null); } catch (e) { } }}>Sử dụng JSON này cho Bước 3</button>
                         <button style={{ marginLeft: '0.5rem' }} onClick={() => { setStep2Payload(null); setNotice('Đã bỏ dữ liệu nguồn từ Bước 2') }}>Bỏ</button>
                       </div>
                     </div>
@@ -1123,7 +1119,7 @@ function App() {
                         <pre style={{ maxHeight: 160, overflow: 'auto', whiteSpace: 'pre-wrap' }}>{JSON.stringify(step3Payload, null, 2)}</pre>
                       </div>
                       <div style={{ marginTop: '0.5rem' }}>
-                        <button onClick={() => { try { setInputText(JSON.stringify(step3Payload, null, 2)); setNotice('Đã điền JSON của Bước 3 vào input.'); setCurrentStep(4); setResult(null); } catch(e){} }}>Sử dụng JSON này cho Bước 4</button>
+                        <button onClick={() => { try { setInputText(JSON.stringify(step3Payload, null, 2)); setNotice('Đã điền JSON của Bước 3 vào input.'); setCurrentStep(4); setResult(null); } catch (e) { } }}>Sử dụng JSON này cho Bước 4</button>
                         <button style={{ marginLeft: '0.5rem' }} onClick={() => { setStep3Payload(null); setNotice('Đã bỏ dữ liệu nguồn từ Bước 3') }}>Bỏ</button>
                       </div>
                     </div>
@@ -1133,7 +1129,7 @@ function App() {
                   {/* Step 5 (image creation) removed from workflow; use Step 4 (prompt) -> Step 6/7 media steps directly. */}
 
                   {/* If there's a result captured from step 5, offer to import it into step 6 */}
-                  
+
 
                   {/* If there's a result captured from step 5, offer to import it into step 6 */}
                   {currentStep === 6 && step5Payload ? (
@@ -1143,69 +1139,69 @@ function App() {
                         <pre style={{ maxHeight: 160, overflow: 'auto', whiteSpace: 'pre-wrap' }}>{JSON.stringify(step5Payload, null, 2)}</pre>
                       </div>
                       <div style={{ marginTop: '0.5rem' }}>
-                        <button onClick={() => { try { setInputText(JSON.stringify(step5Payload, null, 2)); setNotice('Đã điền JSON của Bước 5 vào input.'); setCurrentStep(6); setResult(null); } catch(e){} }}>Sử dụng JSON này cho Bước 6</button>
+                        <button onClick={() => { try { setInputText(JSON.stringify(step5Payload, null, 2)); setNotice('Đã điền JSON của Bước 5 vào input.'); setCurrentStep(6); setResult(null); } catch (e) { } }}>Sử dụng JSON này cho Bước 6</button>
                         <button style={{ marginLeft: '0.5rem' }} onClick={() => { setStep5Payload(null); setNotice('Đã bỏ dữ liệu nguồn từ Bước 5') }}>Bỏ</button>
                       </div>
                     </div>
                   ) : null}
 
                   {/* Step 7: final merge uses step6 result automatically; no manual input required */}
-                    <div style={{ marginTop: '0.6rem', display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
-                        <button onClick={() => { setCurrentStep((s) => Math.max(1, s - 1)); setResult(null); }} disabled={busy || currentStep === 1}>← Trước</button>
-                        <button onClick={() => { setCurrentStep((s) => Math.min(7, s + 1)); setResult(null); }} disabled={busy || currentStep === 7}>Tiếp →</button>
+                  <div style={{ marginTop: '0.6rem', display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                    <button onClick={() => { setCurrentStep((s) => Math.max(1, s - 1)); setResult(null); }} disabled={busy || currentStep === 1}>← Trước</button>
+                    <button onClick={() => { setCurrentStep((s) => Math.min(7, s + 1)); setResult(null); }} disabled={busy || currentStep === 7}>Tiếp →</button>
 
-                      <button onClick={runStep} disabled={busy || !token}>{busy? 'Đang chạy...' : 'Chạy bước'}</button>
-                      {estimatedCredits != null ? <div style={{ marginLeft: '0.6rem', color: estimatedCredits > credits ? 'red' : 'inherit', fontWeight: 700 }}>Ước tính: {estimatedCredits} credits</div> : null}
-                      {!token ? <span style={{ marginLeft: '0.6rem', color: 'var(--text-soft)' }}>Vui lòng đăng nhập để chạy các bước.</span> : null}
-                      <button style={{ marginLeft: '0.6rem' }} onClick={saveCurrentToChat} disabled={busy}>Lưu vào lịch sử</button>
+                    <button onClick={runStep} disabled={busy || !token}>{busy ? 'Đang chạy...' : 'Chạy bước'}</button>
+                    {estimatedCredits != null ? <div style={{ marginLeft: '0.6rem', color: estimatedCredits > credits ? 'red' : 'inherit', fontWeight: 700 }}>Ước tính: {estimatedCredits} credits</div> : null}
+                    {!token ? <span style={{ marginLeft: '0.6rem', color: 'var(--text-soft)' }}>Vui lòng đăng nhập để chạy các bước.</span> : null}
+                    <button style={{ marginLeft: '0.6rem' }} onClick={saveCurrentToChat} disabled={busy}>Lưu vào lịch sử</button>
+                  </div>
+                </div>
+
+                <div style={{ marginTop: '1.2rem' }}>
+                  <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    Kết quả
+                    <div style={{ display: 'inline-flex', gap: '0.5rem', marginLeft: '0.5rem' }}>
+                      <button onClick={downloadResult} disabled={!result}>Tải JSON</button>
+                      <button onClick={importResultToNextStep} disabled={!result}>{`Sử dụng làm input Bước ${Math.min(7, currentStep + 1)}`}</button>
                     </div>
+                  </h3>
+                  <JsonBlock value={result} playerKey={playerKey} />
                 </div>
 
-                  <div style={{ marginTop: '1.2rem' }}>
-                    <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                      Kết quả
-                      <div style={{ display: 'inline-flex', gap: '0.5rem', marginLeft: '0.5rem' }}>
-                        <button onClick={downloadResult} disabled={!result}>Tải JSON</button>
-                        <button onClick={importResultToNextStep} disabled={!result}>{`Sử dụng làm input Bước ${Math.min(7, currentStep + 1)}`}</button>
-                      </div>
-                    </h3>
-                    <JsonBlock value={result} playerKey={playerKey} />
-                  </div>
-
-                  <div style={{ marginTop: '1.2rem' }}>
-                    <h3>Lịch sử chat</h3>
-                    {!selectedChatId ? (
-                      <p className="placeholder">Chưa chọn chat</p>
-                    ) : (
-                      (() => {
-                        const chat = chats.find((c) => c.id === selectedChatId)
-                        if (!chat) return <p className="placeholder">Chat không tồn tại</p>
-                        return (
-                          <div className="chat-history">
-                            <div className="chat-history-title">{chat.title}</div>
-                                {(() => {
-                                  const visible = (chat.items || []).filter((it) => it.step === currentStep)
-                                  if (!visible.length) return <p className="placeholder">Chưa có mục nào cho bước này</p>
-                                  return (
-                                    <ul className="chat-items">
-                                      {visible.map((it) => (
-                                      <li key={it.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                        <button onClick={() => { setResult(it.result); setSelectedChatItemId(it.id); setNotice(`Tải mục: ${new Date(it.created_at).toLocaleString()}`); setPlayerKey(it.id + '_' + Date.now()); }} className={"chat-item-btn" + (selectedChatItemId === it.id ? ' active' : '')}>{new Date(it.created_at).toLocaleString()} (B{it.step})</button>
-                                        <button onClick={() => importHistoryItem(chat.id, it)} title="Nhập mục này làm input cho bước tiếp theo" style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}>⤴</button>
-                                        <button onClick={() => deleteChatItem(chat.id, it.id)} style={{ background: 'transparent', border: 'none', color: 'var(--text-soft)', cursor: 'pointer' }}>✕</button>
-                                      </li>
-                                      ))}
-                                    </ul>
-                                  )
-                                })()}
-                          </div>
-                        )
-                      })()
-                    )}
-                  </div>
+                <div style={{ marginTop: '1.2rem' }}>
+                  <h3>Lịch sử chat</h3>
+                  {!selectedChatId ? (
+                    <p className="placeholder">Chưa chọn chat</p>
+                  ) : (
+                    (() => {
+                      const chat = chats.find((c) => c.id === selectedChatId)
+                      if (!chat) return <p className="placeholder">Chat không tồn tại</p>
+                      return (
+                        <div className="chat-history">
+                          <div className="chat-history-title">{chat.title}</div>
+                          {(() => {
+                            const visible = (chat.items || []).filter((it) => it.step === currentStep)
+                            if (!visible.length) return <p className="placeholder">Chưa có mục nào cho bước này</p>
+                            return (
+                              <ul className="chat-items">
+                                {visible.map((it) => (
+                                  <li key={it.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                    <button onClick={() => { setResult(it.result); setSelectedChatItemId(it.id); setNotice(`Tải mục: ${new Date(it.created_at).toLocaleString()}`); setPlayerKey(it.id + '_' + Date.now()); }} className={"chat-item-btn" + (selectedChatItemId === it.id ? ' active' : '')}>{new Date(it.created_at).toLocaleString()} (B{it.step})</button>
+                                    <button onClick={() => importHistoryItem(chat.id, it)} title="Nhập mục này làm input cho bước tiếp theo" style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}>⤴</button>
+                                    <button onClick={() => deleteChatItem(chat.id, it.id)} style={{ background: 'transparent', border: 'none', color: 'var(--text-soft)', cursor: 'pointer' }}>✕</button>
+                                  </li>
+                                ))}
+                              </ul>
+                            )
+                          })()}
+                        </div>
+                      )
+                    })()
+                  )}
                 </div>
-              )}
-            </section>
+              </div>
+            )}
+          </section>
         </div>
       </main>
     </div>
