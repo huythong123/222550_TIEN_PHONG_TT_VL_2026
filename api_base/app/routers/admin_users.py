@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
-from typing import List
+from typing import List, Any
+from pathlib import Path
 
 from app.models.user_models import UserCreate, UserOut
 from app.models.user_store import list_users, create_user, delete_user, set_user_credits, adjust_user_credits, get_user_by_id
@@ -25,6 +26,83 @@ import secrets
 from app.security.auth import get_password_hash
 
 router = APIRouter()
+
+
+def _path_to_web_url(raw_path: Any) -> str | None:
+    if not raw_path:
+        return None
+
+    url = str(raw_path).replace('\\', '/')
+    if url.startswith('http://') or url.startswith('https://'):
+        return url
+
+    try:
+        resolved = Path(url).resolve()
+    except Exception:
+        resolved = None
+
+    if resolved:
+        try:
+            api_root = Path(render_storage_service.RENDER_ROOT).resolve()
+            rel = resolved.relative_to(api_root)
+            return f"/renders/{rel.as_posix()}"
+        except Exception:
+            pass
+
+        try:
+            workspace_renders = Path.cwd().parent.resolve() / 'storage' / 'renders'
+            rel2 = resolved.relative_to(workspace_renders.resolve())
+            return f"/storage/renders/{rel2.as_posix()}"
+        except Exception:
+            pass
+
+    if url.startswith('/renders/') or url.startswith('/storage/renders/'):
+        return url
+
+    return None
+
+
+def _run_videos_from_log(user_id: int, run_id: str) -> list[dict[str, Any]]:
+    log_detail = get_user_run_log(user_id, run_id)
+    if not log_detail:
+        user = get_user_by_id(user_id)
+        if user and user.get('username'):
+            log_detail = get_user_run_log(user.get('username'), run_id)
+    if not log_detail:
+        return []
+
+    items: list[dict[str, Any]] = []
+    seen_urls: set[str] = set()
+
+    for ev in log_detail.get('events') or []:
+        step = ev.get('step') or 'unknown'
+        data = ev.get('data') or {}
+
+        candidates: list[tuple[str, str | None]] = []
+        if step == 'step6-video' and data.get('video_dir'):
+            video_dir = Path(str(data.get('video_dir')))
+            if video_dir.exists():
+                for mp4 in sorted(video_dir.glob('*.mp4'), key=lambda p: p.stat().st_mtime, reverse=True):
+                    candidates.append((str(mp4), mp4.name))
+
+        for key in ('final_video_path', 'video_url', 'video_path'):
+            if data.get(key):
+                candidates.append((str(data.get(key)), data.get('tvc_title') or data.get('title')))
+
+        for raw_path, title in candidates:
+            web_url = _path_to_web_url(raw_path)
+            if not web_url or web_url in seen_urls:
+                continue
+            seen_urls.add(web_url)
+            items.append({
+                'step': step,
+                'title': title or Path(str(raw_path)).name,
+                'timestamp': ev.get('timestamp'),
+                'url': web_url,
+                'raw_path': raw_path,
+            })
+
+    return items
 
 
 def require_admin(payload=Depends(get_current_user)):
@@ -191,6 +269,11 @@ async def api_get_user_log(user_id: int, run_id: str, admin=Depends(require_admi
     if not log_detail:
         raise HTTPException(status_code=404, detail='Không tìm thấy log của run này')
     return log_detail
+
+
+@router.get('/users/{user_id}/runs/{run_id}/videos')
+async def api_get_user_run_videos(user_id: int, run_id: str, admin=Depends(require_admin)):
+    return _run_videos_from_log(user_id, run_id)
 
 
 @router.delete('/users/{user_id}/logs/{run_id}')

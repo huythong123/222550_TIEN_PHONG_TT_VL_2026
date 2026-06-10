@@ -198,6 +198,10 @@ export function getUserLogDetail(userId, runId) {
   return request(`/admin/users/${userId}/logs/${runId}`, { withJson: false })
 }
 
+export function getUserRunVideos(userId, runId) {
+  return request(`/admin/users/${userId}/runs/${runId}/videos`, { withJson: false })
+}
+
 export function deleteUserLog(userId, runId) {
   return request(`/admin/users/${userId}/logs/${runId}`, {
     method: 'DELETE',

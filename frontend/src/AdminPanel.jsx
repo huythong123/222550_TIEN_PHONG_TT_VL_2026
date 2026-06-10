@@ -12,6 +12,7 @@ import {
     getUsers,
     getUserLogs,
     getUserLogDetail,
+    getUserRunVideos,
     deleteUserLog,
     refundRun,
     getUserDetails,
@@ -195,6 +196,12 @@ function UsersPanel() {
     const [previewSrc, setPreviewSrc] = useState(null)
     const [userVideos, setUserVideos] = useState([])
     const [userPreviewUrl, setUserPreviewUrl] = useState(null)
+    const [userPreviewBlobUrl, setUserPreviewBlobUrl] = useState(null)
+    const [runVideos, setRunVideos] = useState({})
+    const [selectedRunDetail, setSelectedRunDetail] = useState(null)
+    const [modalPreviewUrl, setModalPreviewUrl] = useState(null)
+    const [modalPreviewBlob, setModalPreviewBlob] = useState(null)
+    const [showRunTable, setShowRunTable] = useState(true)
 
     async function loadUserRuns(u) {
         setSelectedUser(u)
@@ -254,6 +261,7 @@ function UsersPanel() {
     const [activities, setActivities] = useState([])
     const [expandedRun, setExpandedRun] = useState(null)
     const [previewBlobUrl, setPreviewBlobUrl] = useState(null)
+    const [eventDetail, setEventDetail] = useState(-1)
 
     async function loadUserDetails(u) {
         try {
@@ -261,6 +269,15 @@ function UsersPanel() {
             setUserDetails(d)
         } catch (e) {
             setUserDetails(null)
+        }
+    }
+
+    async function loadRunVideos(u, runId) {
+        try {
+            const items = await getUserRunVideos(u.id, runId)
+            setRunVideos((prev) => ({ ...prev, [runId]: items || [] }))
+        } catch (e) {
+            setRunVideos((prev) => ({ ...prev, [runId]: [] }))
         }
     }
 
@@ -273,13 +290,16 @@ function UsersPanel() {
         // prefer absolute http(s)
         if (url.match(/^https?:\/\//)) return url
 
+        const apiBase = (import.meta.env.VITE_API_BASE || 'http://localhost:8000/api/v1').replace(/\/$/, '')
+        // derive origin (strip trailing /api/v1) so static mounts at /renders and /storage resolve correctly
+        const origin = apiBase.replace(/\/api\/v[0-9]+$/, '')
+
         // if path contains 'storage/' use that as web root
         const storageIndex = url.indexOf('storage/')
-        const base = (import.meta.env.VITE_API_BASE || 'http://localhost:8000/api/v1').replace(/\/$/, '')
         if (storageIndex !== -1) {
             let sub = url.slice(storageIndex)
             if (!sub.startsWith('/')) sub = '/' + sub
-            return base + sub
+            return origin + sub
         }
 
         // if it's an absolute filesystem path with drive letter like C:/... try to find '/renders/' as fallback
@@ -287,12 +307,12 @@ function UsersPanel() {
         if (rendersIndex !== -1) {
             let sub = url.slice(rendersIndex)
             if (!sub.startsWith('/')) sub = '/' + sub
-            return base + sub
+            return origin + sub
         }
 
-        // otherwise prefix base
-        if (url.startsWith('/')) return base + url
-        return base + '/' + url
+        // otherwise prefix API base (for API endpoints)
+        if (url.startsWith('/')) return apiBase + url
+        return apiBase + '/' + url
     }
 
     async function loadActivities(u) {
@@ -318,17 +338,47 @@ function UsersPanel() {
             const blobUrl = URL.createObjectURL(blob)
             // revoke previous blob if any
             try { if (previewBlobUrl) URL.revokeObjectURL(previewBlobUrl) } catch (e) { }
-            setPreviewSrc(blobUrl)
-            setPreviewBlobUrl(blobUrl)
+            try {
+                if (userPreviewBlobUrl)
+                    URL.revokeObjectURL(userPreviewBlobUrl)
+            } catch (e) { }
+
+            setUserPreviewBlobUrl(blobUrl)
+            setUserPreviewUrl(blobUrl)
         } catch (e) {
             alert('Lỗi khi lấy thông tin run: ' + (e.message || e))
         }
     }
 
+    async function openPreviewVideo(rawUrl, setPreviewState, currentBlobUrl, setBlobState) {
+        const url = resolveVideoUrl(rawUrl)
+        if (!url) {
+            throw new Error('Không tìm thấy đường dẫn video')
+        }
+
+        const token = localStorage.getItem('auth_token')
+        const resp = await fetch(url, { headers: { Authorization: token ? `Bearer ${token}` : '' } })
+        if (!resp.ok) {
+            throw new Error(resp.statusText || `HTTP ${resp.status}`)
+        }
+
+        const blob = await resp.blob()
+        const blobUrl = URL.createObjectURL(blob)
+        try {
+            if (currentBlobUrl) URL.revokeObjectURL(currentBlobUrl)
+        } catch (e) { }
+        setBlobState(blobUrl)
+        setPreviewState(blobUrl)
+    }
+
     async function handlePreviewEventVideo(video) {
         try {
-            const url = resolveVideoUrl(video.url)
-            setUserPreviewUrl(url)
+            await openPreviewVideo(
+                video.url,
+                setModalPreviewUrl,
+                modalPreviewBlob,
+                setModalPreviewBlob
+            )
         } catch (e) {
             alert('Không thể preview video: ' + (e.message || e))
         }
@@ -427,7 +477,6 @@ function UsersPanel() {
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                 <h4>Lịch sử chạy của {selectedUser.username} (#{selectedUser.id})</h4>
                                 <div>
-                                    <button onClick={() => loadUserDetails(selectedUser)}>Xem chi tiết</button>
                                     <button style={{ marginLeft: 8 }} onClick={handleBan}>Khóa</button>
                                     <button style={{ marginLeft: 8 }} onClick={handleUnban}>Mở khóa</button>
                                     <button style={{ marginLeft: 8 }} onClick={handleResetPassword}>Đặt lại mật khẩu</button>
@@ -474,15 +523,17 @@ function UsersPanel() {
                                                         const details = await getVideo(v.id)
                                                         const scenes = await listVideoScenes(v.id)
                                                         setPreviewSrc(null)
-                                                        const url = resolveVideoUrl(details.final_path || v.final_path || '')
-                                                        setUserPreviewUrl(url)
+                                                        await openPreviewVideo(details.final_path || v.final_path || '', setUserPreviewUrl, userPreviewBlobUrl, setUserPreviewBlobUrl)
                                                     } catch (e) { setUserPreviewUrl(null) }
                                                 }}>{v.title}</td>
                                                 <td>{v.status}</td>
                                                 <td>
                                                     <button onClick={async () => {
-                                                        const url = resolveVideoUrl(v.final_path || '')
-                                                        setUserPreviewUrl(url)
+                                                        try {
+                                                            await openPreviewVideo(v.final_path || '', setUserPreviewUrl, userPreviewBlobUrl, setUserPreviewBlobUrl)
+                                                        } catch (e) {
+                                                            alert('Không thể preview video: ' + (e.message || e))
+                                                        }
                                                     }}>Preview</button>
                                                 </td>
                                             </tr>
@@ -492,10 +543,28 @@ function UsersPanel() {
                                 )}
 
                                 {userPreviewUrl ? (
-                                    <div style={{ marginTop: 12 }}>
-                                        <h5>Preview</h5>
-                                        <video src={userPreviewUrl} controls style={{ width: '100%' }} />
-                                        <div style={{ marginTop: 8 }}><button onClick={() => setUserPreviewUrl(null)}>Đóng Preview</button></div>
+                                    <div className="admin-video-preview">
+                                        <h5>Preview Video</h5>
+
+                                        <video
+                                            src={userPreviewUrl}
+                                            controls
+                                        />
+
+                                        <button
+                                            style={{ marginTop: 12 }}
+                                            onClick={() => {
+                                                try {
+                                                    if (userPreviewBlobUrl)
+                                                        URL.revokeObjectURL(userPreviewBlobUrl)
+                                                } catch (e) { }
+
+                                                setUserPreviewBlobUrl(null)
+                                                setUserPreviewUrl(null)
+                                            }}
+                                        >
+                                            Đóng
+                                        </button>
                                     </div>
                                 ) : null}
                             </div>
@@ -505,66 +574,48 @@ function UsersPanel() {
                                         <React.Fragment key={r.run_id}>
                                             <tr><td>{r.run_id}</td><td>{r.date}</td><td>{r.event_count}</td>
                                                 <td>
-                                                    <button onClick={() => handlePreview(r)} disabled={!r.has_video}>{r.has_video ? 'Xem video' : 'Không có video'}</button>
-                                                    <button style={{ marginLeft: 8 }} onClick={async () => {
-                                                        // authenticated download via blob
-                                                        const base = (import.meta.env.VITE_API_BASE || 'http://localhost:8000/api/v1').replace(/\/$/, '')
-                                                        const url = `${base}/admin/users/${selectedUser.id}/runs/${r.run_id}/download`
-                                                        const token = localStorage.getItem('auth_token')
-                                                        try {
-                                                            const resp = await fetch(url, { headers: { Authorization: token ? `Bearer ${token}` : '' } })
-                                                            if (!resp.ok) { alert('Không thể tải video: ' + resp.statusText); return }
-                                                            const blob = await resp.blob()
-                                                            const a = document.createElement('a')
-                                                            const blobUrl = URL.createObjectURL(blob)
-                                                            a.href = blobUrl
-                                                            a.download = `${r.run_id}.mp4`
-                                                            document.body.appendChild(a)
-                                                            a.click()
-                                                            a.remove()
-                                                            URL.revokeObjectURL(blobUrl)
-                                                        } catch (e) { alert('Lỗi tải: ' + (e.message || e)) }
-                                                    }}>Tải xuống</button>
-                                                    <button style={{ marginLeft: 8 }} onClick={() => handleRefund(r)} disabled={r.refunded}>{r.refunded ? 'Đã hoàn tiền' : 'Hoàn tiền'}</button>
-                                                    <button style={{ marginLeft: 8 }} onClick={() => handleDelete(r)}>Xóa</button>
-                                                    <button style={{ marginLeft: 8 }} onClick={() => setExpandedRun(expandedRun === r.run_id ? null : r.run_id)}>Chi tiết</button>
+                                                    <div className="run-actions">
+                                                        <button onClick={() => handlePreview(r)} disabled={!r.has_video}>{r.has_video ? 'Xem video' : 'Không có video'}</button>
+                                                        <button style={{ marginLeft: 8 }} onClick={async () => {
+                                                            // authenticated download via blob
+                                                            const base = (import.meta.env.VITE_API_BASE || 'http://localhost:8000/api/v1').replace(/\/$/, '')
+                                                            const url = `${base}/admin/users/${selectedUser.id}/runs/${r.run_id}/download`
+                                                            const token = localStorage.getItem('auth_token')
+                                                            try {
+                                                                const resp = await fetch(url, { headers: { Authorization: token ? `Bearer ${token}` : '' } })
+                                                                if (!resp.ok) { alert('Không thể tải video: ' + resp.statusText); return }
+                                                                const blob = await resp.blob()
+                                                                const a = document.createElement('a')
+                                                                const blobUrl = URL.createObjectURL(blob)
+                                                                a.href = blobUrl
+                                                                a.download = `${r.run_id}.mp4`
+                                                                document.body.appendChild(a)
+                                                                a.click()
+                                                                a.remove()
+                                                                URL.revokeObjectURL(blobUrl)
+                                                            } catch (e) { alert('Lỗi tải: ' + (e.message || e)) }
+                                                        }}>Tải xuống</button>
+                                                        <button style={{ marginLeft: 8 }} onClick={() => handleRefund(r)} disabled={r.refunded}>{r.refunded ? 'Đã hoàn tiền' : 'Hoàn tiền'}</button>
+                                                        <button style={{ marginLeft: 8 }} onClick={() => handleDelete(r)}>Xóa</button>
+                                                        <button
+                                                            style={{ marginLeft: 8 }}
+                                                            onClick={async () => {
+                                                                console.log('CLICK', r.run_id)
+
+                                                                await loadRunVideos(selectedUser, r.run_id)
+
+                                                                console.log('LOAD DONE')
+
+                                                                setSelectedRunDetail(r.run_id)
+
+                                                                console.log('SET DETAIL', r.run_id)
+                                                            }}
+                                                        >
+                                                            Chi tiết
+                                                        </button>
+                                                    </div>
                                                 </td>
                                             </tr>
-                                            {expandedRun === r.run_id ? (
-                                                <tr><td colSpan={6} style={{ background: '#fafafa' }}>
-                                                    <div style={{ padding: 12 }}>
-                                                        <h5>Videos theo sự kiện</h5>
-                                                        {r.videosByStep && Object.keys(r.videosByStep).length > 0 ? (
-                                                            Object.entries(r.videosByStep).map(([step, vids]) => (
-                                                                <div key={step} style={{ marginBottom: 10 }}>
-                                                                    <div style={{ fontWeight: 600 }}>{step} ({(vids || []).length})</div>
-                                                                    <table className="admin-table"><thead><tr><th>#</th><th>Tiêu đề</th><th>Thời gian</th><th>Hành động</th></tr></thead>
-                                                                        <tbody>
-                                                                            {(vids || []).map((vv, idx) => (
-                                                                                <tr key={idx}>
-                                                                                    <td>{idx + 1}</td>
-                                                                                    <td>{vv.title}</td>
-                                                                                    <td>{vv.timestamp || ''}</td>
-                                                                                    <td>
-                                                                                        <button onClick={() => handlePreviewEventVideo(vv)}>Preview</button>
-                                                                                        <button style={{ marginLeft: 8 }} onClick={() => handleDownloadEventVideo(vv, r)}>Tải xuống</button>
-                                                                                    </td>
-                                                                                </tr>
-                                                                            ))}
-                                                                        </tbody></table>
-                                                                </div>
-                                                            ))
-                                                        ) : (
-                                                            <div style={{ color: '#666' }}><em>Không có video theo sự kiện — hiển thị raw events bên dưới.</em></div>
-                                                        )}
-
-                                                        <div style={{ marginTop: 12 }}>
-                                                            <h6>Events (raw)</h6>
-                                                            <pre style={{ whiteSpace: 'pre-wrap', fontSize: 12 }}>{JSON.stringify(r.events || [], null, 2)}</pre>
-                                                        </div>
-                                                    </div>
-                                                </td></tr>
-                                            ) : null}
                                         </React.Fragment>
                                     ))}
                                 </tbody></table>
@@ -582,20 +633,226 @@ function UsersPanel() {
                         </div>
                     ) : <div><em>Nhấn vào người dùng để xem các runs</em></div>}
 
-                    {previewSrc ? (
-                        <div style={{ marginTop: 12 }}>
-                            <h5>Xem video</h5>
-                            <video src={previewSrc} controls style={{ width: '100%' }} />
-                            <div style={{ marginTop: 8 }}><button onClick={() => { try { if (previewBlobUrl) URL.revokeObjectURL(previewBlobUrl) } catch (e) { } setPreviewBlobUrl(null); setPreviewSrc(null); }}>Đóng</button></div>
-                        </div>
-                    ) : null}
                 </div>
             </div>
+            {selectedRunDetail && (
+                <div className="video-modal-overlay">
+                    {console.log(
+                        'MODAL OPEN',
+                        selectedRunDetail,
+                        runVideos[selectedRunDetail]
+                    )}
+                    <div className="video-modal">
+                        <div className="video-modal-header">
+
+                            {!modalPreviewUrl && (
+                                <>
+                                    <h3>Chi tiết đoạn chat</h3>
+
+                                    <button
+                                        onClick={() => {
+                                            setSelectedRunDetail(null)
+
+                                            try {
+                                                if (modalPreviewBlob)
+                                                    URL.revokeObjectURL(modalPreviewBlob)
+                                            } catch (e) { }
+
+                                            setModalPreviewBlob(null)
+                                            setModalPreviewUrl(null)
+                                            setShowRunTable(true)
+                                        }}
+                                    >
+                                        ✕
+                                    </button>
+                                </>
+                            )}
+
+                        </div>
+
+                        {modalPreviewUrl && (
+                            <div className="modal-preview-box">
+
+                                <div className="modal-preview-header">
+
+                                    <button
+                                        onClick={() => {
+                                            try {
+                                                if (modalPreviewBlob)
+                                                    URL.revokeObjectURL(modalPreviewBlob)
+                                            } catch (e) { }
+
+                                            setModalPreviewBlob(null)
+                                            setModalPreviewUrl(null)
+                                            setShowRunTable(true)
+                                        }}
+                                    >
+                                        ✕ Đóng preview
+                                    </button>
+
+                                </div>
+
+                                <video
+                                    src={modalPreviewUrl}
+                                    controls
+                                    autoPlay
+                                    style={{
+                                        width: '100%',
+                                        maxHeight: '500px'
+                                    }}
+                                />
+
+                            </div>
+                        )}
+
+                        {showRunTable ? (
+                            (runVideos[selectedRunDetail] || []).length > 0 ? (
+                                <table className="admin-table">
+                                    <thead>
+                                        <tr>
+                                            <th>STT</th>
+                                            <th>Bước</th>
+                                            <th>Tiêu đề</th>
+                                            <th>Thời gian</th>
+                                            <th>Hành động</th>
+                                        </tr>
+                                    </thead>
+
+                                    <tbody>
+                                        {(runVideos[selectedRunDetail] || []).map((vv, idx) => (
+                                            <tr key={idx}>
+                                                <td>{idx + 1}</td>
+                                                <td>{vv.step}</td>
+                                                <td>{vv.title}</td>
+                                                <td>{vv.timestamp}</td>
+
+                                                <td>
+                                                    <button
+                                                        onClick={async () => {
+                                                            await handlePreviewEventVideo(vv)
+                                                            setShowRunTable(false)
+                                                        }}
+                                                    >
+                                                        Preview
+                                                    </button>
+
+                                                    <button
+                                                        onClick={() =>
+                                                            handleDownloadEventVideo(
+                                                                vv,
+                                                                { run_id: selectedRunDetail }
+                                                            )
+                                                        }
+                                                    >
+                                                        Tải xuống
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            ) : (
+                                <p>Không có video.</p>)
+                        ) : null}
+
+                        {showRunTable && (
+                            <div className="step-events-container">
+                                <h5 className="step-events-title">
+                                    Sự kiện (chi tiết bước)
+                                </h5>
+                                {(() => {
+                                    const runObj = (userRuns || []).find(x => x.run_id === selectedRunDetail) || {}
+                                    const rawEvents = runObj.events || []
+
+                                    const creditMap = {}
+
+                                    rawEvents.forEach(ev => {
+                                        if (
+                                            ev.step === 'credits' &&
+                                            ev.data?.deducted
+                                        ) {
+                                            const idx = rawEvents.indexOf(ev)
+
+                                            if (idx > 0) {
+                                                const prev = rawEvents[idx - 1]
+                                                creditMap[prev.timestamp] =
+                                                    ev.data.deducted
+                                            }
+                                        }
+                                    })
+
+                                    const events = rawEvents.filter(
+                                        ev => ev.step !== 'credits'
+                                    )
+                                    if (!events || events.length === 0) return <div style={{ color: '#666' }}>Không có sự kiện được ghi nhận cho run này.</div>
+                                    return events.map((ev, idx) => (
+                                        <div
+                                            key={idx}
+                                            className="step-event-card"
+                                        >
+                                            <div className="step-event-header">
+                                                <div className="step-event-name">
+                                                    {ev.step || 'unknown'}
+
+                                                    {creditMap[ev.timestamp] && (
+                                                        <span className="step-credit-tag">
+                                                            (-{creditMap[ev.timestamp]} credit)
+                                                        </span>
+                                                    )}
+                                                </div>
+
+                                                <div className="step-event-time">
+                                                    {ev.timestamp || ''}
+                                                </div>
+                                            </div>
+
+                                            <div className="step-event-content">
+                                                {(ev.data &&
+                                                    (ev.data.tvc_title ||
+                                                        ev.data.title)) ||
+                                                    (ev.data && ev.data.text) ||
+                                                    JSON.stringify(
+                                                        ev.data || {}
+                                                    ).slice(0, 120)}
+                                            </div>
+
+                                            <div className="step-event-actions">
+                                                <button
+                                                    onClick={() =>
+                                                        setEventDetail(
+                                                            eventDetail === idx
+                                                                ? -1
+                                                                : idx
+                                                        )
+                                                    }
+                                                >
+                                                    {eventDetail === idx
+                                                        ? 'Ẩn'
+                                                        : 'Chi tiết bước'}
+                                                </button>
+                                            </div>
+                                            {eventDetail === idx && (
+                                                <div className="event-detail-box">
+                                                    <pre className="event-detail-pre">
+                                                        {JSON.stringify(
+                                                            ev,
+                                                            null,
+                                                            2
+                                                        )}
+                                                    </pre>
+                                                </div>
+                                            )}
+                                        </div>
+                                    ))
+                                })()}
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
         </div>
     )
 }
-
-
 
 function PackagesPanel() {
     const [packages, setPackages] = useState([])
@@ -638,25 +895,7 @@ function PackagesPanel() {
             <h3>Gói</h3>
             <div style={{ display: 'flex', gap: '1rem' }}>
                 <div style={{ flex: 1 }}>
-                    <table className="admin-table"><thead><tr><th>ID</th><th>Tên</th><th>Số credit</th><th>Giá (VND)</th><th>Giá / credit (VND)</th><th>Hành động</th></tr></thead>
-                        <tbody>{packages.map(p => {
-                            const priceCents = Number(p.price_cents || 0)
-                            const priceVnd = Math.round(priceCents / 100)
-                            const pricePerCredit = p.credits ? Math.round(priceVnd / p.credits) : 0
-                            return (
-                                <tr key={p.id}>
-                                    <td>{p.id}</td>
-                                    <td>{p.name}</td>
-                                    <td>{p.credits}</td>
-                                    <td>{priceVnd.toLocaleString()}₫</td>
-                                    <td>{pricePerCredit.toLocaleString()}₫</td>
-                                    <td>
-                                        <button onClick={() => edit(p)}>Sửa</button>
-                                        <button style={{ marginLeft: 8 }} onClick={() => remove(p.id)}>Xóa</button>
-                                    </td>
-                                </tr>
-                            )
-                        })}</tbody></table>
+
                 </div>
                 <div style={{ width: 360 }}>
                     <h4>{selected ? 'Sửa gói' : 'Tạo gói mới'}</h4>

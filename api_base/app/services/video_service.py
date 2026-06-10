@@ -14,8 +14,6 @@ logger = logging.getLogger(__name__)
 
 class VideoSystem:
     def __init__(self):
-        # Runway integration removed — use Kling for text-to-video
-        # Default output directory: API's storage/renders so files are served at /renders
         self.output_dir = str(RENDER_ROOT)
         os.makedirs(self.output_dir, exist_ok=True)
 
