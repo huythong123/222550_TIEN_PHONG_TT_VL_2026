@@ -18,7 +18,6 @@ import {
 } from './api'
 import AdminPanel from './AdminPanel'
 import BuyCredits from './BuyCredits'
-
 const API_BASE_RAW = import.meta.env.VITE_API_BASE || 'http://localhost:8000/api/v1'
 const API_ORIGIN = API_BASE_RAW.replace(/\/api\/v1\/?$/, '')
 

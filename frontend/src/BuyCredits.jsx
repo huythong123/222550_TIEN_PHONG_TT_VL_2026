@@ -190,7 +190,6 @@ export default function BuyCredits({ onBought, pageMode = false, onClose }) {
                 const isRecommended = idx === plans.length - 1
                 return (
                     <div key={p.id} className={"buy-plan-card" + (isRecommended ? ' recommended' : '')}>
-        
                         <div className="buy-plan-header">
                             <div className="buy-plan-name">{p.label}</div>
                             <div className="buy-plan-credits">{p.credits} Credits</div>
