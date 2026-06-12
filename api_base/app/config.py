@@ -20,6 +20,8 @@ class Settings(BaseSettings):
     CREDIT_UNIT_CHARS: int = 100
     # Credits per USD. 2 USD => 35 credits => 1 USD => 17.5 credits
     CREDITS_PER_DOLLAR: float = 17.5
+    USE_SQLITE: bool = True
+    SQLITE_PATH: str = "./autoads.db"
     MYSQL_HOST: str = "127.0.0.1"
     MYSQL_PORT: int = 3306
     MYSQL_USER: str = "root"
@@ -64,6 +66,8 @@ class Settings(BaseSettings):
 
     @property
     def DATABASE_URL(self) -> str:
+        if self.USE_SQLITE:
+            return f"sqlite:///{self.SQLITE_PATH}"
         encoded_password = quote_plus(self.MYSQL_PASSWORD)
         return (
             f"mysql+pymysql://{self.MYSQL_USER}:{encoded_password}"

@@ -6,6 +6,7 @@ from fastapi.responses import RedirectResponse
 from pydantic import BaseModel, EmailStr
 
 from app.config import settings
+from app.utils.settings_helper import get_db_setting
 from app.models.user_store import (
     find_user_by_username_or_email,
     find_or_create_google_user,
@@ -109,12 +110,15 @@ async def change_password(data: ChangePasswordIn, payload=Depends(get_current_us
 
 @router.get('/google/login')
 async def google_login():
-    if not settings.GOOGLE_CLIENT_ID or not settings.GOOGLE_CLIENT_SECRET:
+    gid = get_db_setting('GOOGLE_CLIENT_ID')
+    gsecret = get_db_setting('GOOGLE_CLIENT_SECRET')
+    guri = get_db_setting('GOOGLE_REDIRECT_URI')
+    if not gid or not gsecret:
         raise HTTPException(status_code=500, detail='Thiếu cấu hình Google OAuth ở backend')
 
     params = {
-        'client_id': settings.GOOGLE_CLIENT_ID,
-        'redirect_uri': settings.GOOGLE_REDIRECT_URI,
+        'client_id': gid,
+        'redirect_uri': guri,
         'response_type': 'code',
         'scope': GOOGLE_SCOPES,
         'access_type': 'offline',
@@ -135,7 +139,10 @@ async def google_callback(code: str | None = None, error: str | None = None):
     if not code:
         return RedirectResponse(url=_frontend_redirect_url(error='Google không trả về mã xác thực'), status_code=302)
 
-    if not settings.GOOGLE_CLIENT_ID or not settings.GOOGLE_CLIENT_SECRET:
+    gid = get_db_setting('GOOGLE_CLIENT_ID')
+    gsecret = get_db_setting('GOOGLE_CLIENT_SECRET')
+    guri = get_db_setting('GOOGLE_REDIRECT_URI')
+    if not gid or not gsecret:
         return RedirectResponse(url=_frontend_redirect_url(error='Thiếu cấu hình Google OAuth ở backend'), status_code=302)
 
     try:
@@ -144,9 +151,9 @@ async def google_callback(code: str | None = None, error: str | None = None):
                 settings.GOOGLE_TOKEN_URL,
                 data={
                     'code': code,
-                    'client_id': settings.GOOGLE_CLIENT_ID,
-                    'client_secret': settings.GOOGLE_CLIENT_SECRET,
-                    'redirect_uri': settings.GOOGLE_REDIRECT_URI,
+                    'client_id': gid,
+                    'client_secret': gsecret,
+                    'redirect_uri': guri,
                     'grant_type': 'authorization_code',
                 },
             )
@@ -227,7 +234,6 @@ async def api_buy_credits(payload: BuyCreditsIn, user=Depends(get_current_user))
     if dollars <= 0:
         raise HTTPException(status_code=400, detail='Số tiền phải lớn hơn 0')
 
-    from app.config import settings
     # Convert dollars -> amount_vnd then compute credits using VND-based formula (2000 VND -> 30 credits)
     rate = getattr(settings, 'USD_TO_VND', 24000)
     amount_vnd = int(round(dollars * rate))

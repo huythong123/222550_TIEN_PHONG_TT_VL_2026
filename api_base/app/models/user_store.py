@@ -59,14 +59,14 @@ def _ensure_user_columns() -> None:
 
     with engine.begin() as connection:
         if 'email_verified' not in columns:
-            connection.execute(text('ALTER TABLE users ADD COLUMN email_verified BOOLEAN NOT NULL DEFAULT 0'))
+            connection.execute(text('ALTER TABLE users ADD COLUMN email_verified INTEGER NOT NULL DEFAULT 0'))
         if 'email_verification_token_hash' not in columns:
             connection.execute(text('ALTER TABLE users ADD COLUMN email_verification_token_hash VARCHAR(255) NULL'))
         if 'email_verification_expires_at' not in columns:
             connection.execute(text('ALTER TABLE users ADD COLUMN email_verification_expires_at DATETIME NULL'))
         if 'google_sub' not in columns:
             connection.execute(text('ALTER TABLE users ADD COLUMN google_sub VARCHAR(255) NULL'))
-            connection.execute(text('CREATE UNIQUE INDEX ix_users_google_sub ON users (google_sub)'))
+            connection.execute(text('CREATE UNIQUE INDEX IF NOT EXISTS ix_users_google_sub ON users (google_sub)'))
         if 'auth_provider' not in columns:
             connection.execute(text("ALTER TABLE users ADD COLUMN auth_provider VARCHAR(50) NOT NULL DEFAULT 'local'"))
         # Ensure credits column exists independently of auth_provider
@@ -74,11 +74,19 @@ def _ensure_user_columns() -> None:
             connection.execute(text('ALTER TABLE users ADD COLUMN credits INTEGER NOT NULL DEFAULT 0'))
         # Account control columns
         if 'is_active' not in columns:
-            connection.execute(text('ALTER TABLE users ADD COLUMN is_active BOOLEAN NOT NULL DEFAULT 1'))
+            connection.execute(text('ALTER TABLE users ADD COLUMN is_active INTEGER NOT NULL DEFAULT 1'))
         if 'is_banned' not in columns:
-            connection.execute(text('ALTER TABLE users ADD COLUMN is_banned BOOLEAN NOT NULL DEFAULT 0'))
+            connection.execute(text('ALTER TABLE users ADD COLUMN is_banned INTEGER NOT NULL DEFAULT 0'))
         if 'ban_reason' not in columns:
             connection.execute(text('ALTER TABLE users ADD COLUMN ban_reason VARCHAR(512) NULL'))
+
+
+def _seed_setting(db, key: str, value: str | None, description: str) -> None:
+    if not value:
+        return
+    exists = db.query(SystemSettingEntity).filter(SystemSettingEntity.key == key).first()
+    if not exists:
+        db.add(SystemSettingEntity(key=key, value=value, description=description))
 
 
 def init_db() -> None:
@@ -86,6 +94,24 @@ def init_db() -> None:
     _ensure_user_columns()
 
     with SessionLocal() as db:
+        _seed_setting(db, 'OPENAI_API_KEY', settings.OPENAI_API_KEY, 'OpenAI API key dùng cho GPT, DALL-E, v.v.')
+        _seed_setting(db, 'KLING_API_KEY', settings.KLING_API_KEY, 'Kling AI API key tạo video.')
+        _seed_setting(db, 'KLING_ACCESS_KEY', settings.KLING_ACCESS_KEY, 'Kling AI access key.')
+        _seed_setting(db, 'SEPAY_API_KEY', settings.SEPAY_API_KEY, 'API key SePay dùng để xác nhận thanh toán ngân hàng.')
+        _seed_setting(db, 'SEPAY_ACCOUNT_NUMBER', settings.SEPAY_ACCOUNT_NUMBER, 'Số tài khoản ngân hàng nhận tiền nạp Credits.')
+        _seed_setting(db, 'SEPAY_ACCOUNT_NAME', settings.SEPAY_ACCOUNT_NAME, 'Tên chủ tài khoản ngân hàng.')
+        _seed_setting(db, 'SEPAY_BANK_BRAND', settings.SEPAY_BANK_BRAND, 'Tên ngân hàng (VD: Vietcombank, Techcombank, MB Bank).')
+        _seed_setting(db, 'GOOGLE_CLIENT_ID', settings.GOOGLE_CLIENT_ID, 'Google OAuth Client ID.')
+        _seed_setting(db, 'GOOGLE_CLIENT_SECRET', settings.GOOGLE_CLIENT_SECRET, 'Google OAuth Client Secret.')
+        _seed_setting(db, 'GOOGLE_REDIRECT_URI', settings.GOOGLE_REDIRECT_URI, 'Google OAuth redirect URI.')
+        _seed_setting(db, 'SMTP_HOST', settings.SMTP_HOST, 'SMTP server host.')
+        _seed_setting(db, 'SMTP_PORT', str(settings.SMTP_PORT) if settings.SMTP_PORT else None, 'SMTP server port.')
+        _seed_setting(db, 'SMTP_USERNAME', settings.SMTP_USERNAME, 'SMTP username.')
+        _seed_setting(db, 'SMTP_PASSWORD', settings.SMTP_PASSWORD, 'SMTP password.')
+        _seed_setting(db, 'SMTP_FROM_EMAIL', settings.SMTP_FROM_EMAIL, 'Email gửi đi.')
+        _seed_setting(db, 'SMTP_FROM_NAME', settings.SMTP_FROM_NAME, 'Tên người gửi email.')
+        db.commit()
+
         has_admin = db.query(UserEntity).filter(UserEntity.is_admin.is_(True)).first()
         if has_admin:
             if has_admin.email and not has_admin.email_verified:

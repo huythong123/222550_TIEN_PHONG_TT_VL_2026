@@ -5,6 +5,7 @@ from typing import List
 from openai import AsyncOpenAI
 
 from app.config import settings
+from app.utils.settings_helper import get_db_setting
 from app.models.schemas import MasterScript, SceneData
 
 logger = logging.getLogger(__name__)
@@ -13,7 +14,7 @@ logger = logging.getLogger(__name__)
 class SceneService:
     def __init__(self):
         self.client = AsyncOpenAI(
-            api_key=settings.OPENAI_API_KEY
+            api_key=get_db_setting('OPENAI_API_KEY')
         )
         self.model = "gpt-4o-mini"
 

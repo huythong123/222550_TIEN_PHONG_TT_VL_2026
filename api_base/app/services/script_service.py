@@ -2,13 +2,14 @@ import json
 import logging
 from openai import AsyncOpenAI
 from app.config import settings
+from app.utils.settings_helper import get_db_setting
 from app.models.schemas import CleanedContent, MasterScript
 
 logger = logging.getLogger(__name__)
 
 class ScriptService:
     def __init__(self):
-        self.client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
+        self.client = AsyncOpenAI(api_key=get_db_setting('OPENAI_API_KEY'))
         self.model = "gpt-4o"
 
     async def generate_master_script(self, content: CleanedContent, target_duration: int = None) -> MasterScript:

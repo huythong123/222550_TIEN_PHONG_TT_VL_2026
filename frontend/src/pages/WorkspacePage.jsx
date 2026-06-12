@@ -20,6 +20,8 @@ export default function WorkspacePage(props) {
     deleteChat,
     accountLabel,
     credits,
+    isAdmin,
+    onOpenAdmin,
     showBuyPage,
     onToggleBuyPage,
     showPasswordForm,
@@ -80,6 +82,8 @@ export default function WorkspacePage(props) {
           onToggleBuyPage={onToggleBuyPage}
           showPasswordForm={showPasswordForm}
           onTogglePasswordForm={onTogglePasswordForm}
+          isAdmin={isAdmin}
+          onOpenAdmin={onOpenAdmin}
           currentPassword={currentPassword}
           setCurrentPassword={setCurrentPassword}
           newPassword={newPassword}

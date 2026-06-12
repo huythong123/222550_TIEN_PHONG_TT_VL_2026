@@ -6,7 +6,7 @@ export default function AdminSidebar({ tab, setTab }) {
     { key: 'Users', label: 'Người dùng', icon: '👥' },
     { key: 'Packages', label: 'Gói', icon: '📦' },
     { key: 'Revenue', label: 'Báo cáo doanh thu', icon: '💰' },
-    { key: 'Integrations', label: 'Quản lý API Keys', icon: '🔑' },
+    { key: 'Integrations', label: 'Tích hợp & API Keys', icon: '🔑' },
   ]
 
   return (

@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useCallback } from 'react'
+import { Toaster, toast } from 'react-hot-toast'
 import {
   getStoredToken,
   setAuthToken,
@@ -23,6 +24,8 @@ import BuyCredits from './BuyCredits'
 import LandingPage from './pages/LandingPage'
 import LoginPage from './pages/LoginPage'
 import WorkspacePage from './pages/WorkspacePage'
+import ConfirmModal from './components/ui/ConfirmModal'
+import PromptModal from './components/ui/PromptModal'
 import { STEP_INFO } from './components/workspace/stepInfo'
 
 function App() {
@@ -33,6 +36,7 @@ function App() {
   const [credits, setCredits] = useState(null)
   const [me, setMe] = useState(null)
   const [showBuyPage, setShowBuyPage] = useState(false)
+  const [showAdmin, setShowAdmin] = useState(false)
 
   const [authEmail, setAuthEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -61,6 +65,23 @@ function App() {
   const [selectedChatItemId, setSelectedChatItemId] = useState(null)
 
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
+
+  const [confirmState, setConfirmState] = useState({ open: false, title: '', message: '', resolve: null })
+  const [promptState, setPromptState] = useState({ open: false, title: '', message: '', defaultValue: '', resolve: null })
+  const showConfirm = useCallback((title, message) => new Promise((resolve) => {
+    setConfirmState({ open: true, title, message, resolve })
+  }), [])
+  const showPrompt = useCallback((title, message, defaultValue = '') => new Promise((resolve) => {
+    setPromptState({ open: true, title, message, defaultValue, resolve })
+  }), [])
+  const closeConfirm = useCallback((result) => {
+    confirmState.resolve?.(result)
+    setConfirmState(s => ({ ...s, open: false }))
+  }, [confirmState])
+  const closePrompt = useCallback((result) => {
+    promptState.resolve?.(result)
+    setPromptState(s => ({ ...s, open: false }))
+  }, [promptState])
   const [showLoginFromHash, setShowLoginFromHash] = useState(() => {
     try { return window?.location?.hash === '#login' } catch (e) { return false }
   })
@@ -251,7 +272,7 @@ function App() {
             // No server chats. If local parsed exists, ask user before pushing local data to their account
             if (parsed && parsed.length > 0) {
               try {
-                const confirmSave = window.confirm('Tài khoản này chưa có lịch sử chat trên server. Bạn có muốn lưu lịch sử chat cục bộ vào tài khoản không?')
+                const confirmSave = await showConfirm('Đồng bộ dữ liệu', 'Tài khoản này chưa có lịch sử chat trên server. Bạn có muốn lưu lịch sử chat cục bộ vào tài khoản không?')
                 if (confirmSave) {
                   try { await saveMyChats(parsed) } catch (e) { console.warn('Failed to save local chats to server', e) }
                   try { localStorage.removeItem('chats:anon') } catch (e) { }
@@ -340,8 +361,9 @@ function App() {
     setIsMobileMenuOpen(false)
   }
 
-  function deleteChat(id) {
-    if (!window.confirm('Xác nhận xóa đoạn chat này?')) return
+  async function deleteChat(id) {
+    const ok = await showConfirm('Xóa chat', 'Xác nhận xóa đoạn chat này?')
+    if (!ok) return
     const next = chats.filter((c) => c.id !== id)
     setChats(next)
     persistChats(next)
@@ -352,10 +374,10 @@ function App() {
     }
   }
 
-  function renameChat(id) {
+  async function renameChat(id) {
     const chat = chats.find((c) => c.id === id)
     if (!chat) return
-    const name = window.prompt('Đổi tên đoạn chat:', chat.title)
+    const name = await showPrompt('Đổi tên', 'Nhập tên mới cho đoạn chat:', chat.title)
     if (!name || !name.trim()) return
     const next = chats.map((c) => (c.id === id ? { ...c, title: name.trim() } : c))
     setChats(next)
@@ -400,7 +422,7 @@ function App() {
     const activeId = selectedChatId || createNewChat()
     addToChat(activeId, entry)
     setSelectedChatItemId(entry.id)
-    alert('Đã lưu dữ liệu thành công vào lịch sử đoạn chat.')
+    toast.success('Đã lưu dữ liệu thành công vào lịch sử đoạn chat.')
   }
 
   function downloadResult() {
@@ -440,7 +462,7 @@ function App() {
         setLocalToken(res.access_token)
         setCurrentStep(1)
       }
-    } catch (err) { alert(err.message || 'Lỗi đăng nhập') }
+    } catch (err) { toast.error(err.message || 'Lỗi đăng nhập') }
     finally { setBusy(false) }
   }
 
@@ -475,15 +497,15 @@ function App() {
   async function handleChangePassword(e) {
     e.preventDefault()
     if (!newPassword || !newPasswordConfirm) {
-      alert('Vui lòng nhập mật khẩu mới và xác nhận mật khẩu')
+      toast.error('Vui lòng nhập mật khẩu mới và xác nhận mật khẩu')
       return
     }
     if (newPassword !== newPasswordConfirm) {
-      alert('Mật khẩu mới không khớp')
+      toast.error('Mật khẩu mới không khớp')
       return
     }
     if (newPassword.length < 6) {
-      alert('Mật khẩu mới phải có ít nhất 6 ký tự')
+      toast.error('Mật khẩu mới phải có ít nhất 6 ký tự')
       return
     }
 
@@ -496,7 +518,7 @@ function App() {
       setNewPasswordConfirm('')
       setShowPasswordForm(false)
     } catch (err) {
-      alert(err.message || 'Không thể đổi mật khẩu')
+      toast.error(err.message || 'Không thể đổi mật khẩu')
     } finally {
       setPasswordBusy(false)
     }
@@ -505,7 +527,7 @@ function App() {
   async function runStep() {
     if (currentStep === 1) {
       const url = (inputText || '').trim()
-      if (!url) return alert('Vui lòng nhập link URL')
+      if (!url) { toast.error('Vui lòng nhập link URL'); return }
     }
     setBusy(true)
     try {
@@ -548,21 +570,21 @@ function App() {
         }
         if (activeId) addToChat(activeId, entry)
       }
-    } catch (err) { alert(err.message || 'Xử lý thất bại.') }
+    } catch (err) { toast.error(err.message || 'Xử lý thất bại.') }
     finally { setBusy(false) }
   }
 
   const accountLabel = me?.username || me?.email || 'Thông Lự Huy'
+  const showLanding = window.location.hash === '#home'
 
   // ==========================================
-  // RENDER LỚP 1: SHOW LANDING OR LOGIN BASED ON HASH
+  // RENDER
   // ==========================================
-  if (!token) {
-    if (!showLoginFromHash) {
-      return <LandingPage />
-    }
-
-    return (
+  let page = null
+  if (!token && !showLoginFromHash) {
+    page = <LandingPage />
+  } else if (!token && showLoginFromHash) {
+    page = (
       <LoginPage
         authEmail={authEmail}
         setAuthEmail={setAuthEmail}
@@ -573,72 +595,90 @@ function App() {
         getGoogleLoginUrl={getGoogleLoginUrl}
       />
     )
+  } else if (showLanding) {
+    page = <LandingPage />
+  } else if (me && me.role === 'admin' && showAdmin) {
+    page = <AdminPanel onBack={() => setShowAdmin(false)} />
+  } else {
+    page = (
+      <WorkspacePage
+        isMobileMenuOpen={isMobileMenuOpen}
+        onToggleMobileMenu={() => setIsMobileMenuOpen((prev) => !prev)}
+        chats={chats}
+        selectedChatId={selectedChatId}
+        createNewChat={createNewChat}
+        selectChat={selectChat}
+        openMenuId={openMenuId}
+        onToggleMenu={toggleMenu}
+        renameChat={renameChat}
+        deleteChat={deleteChat}
+        accountLabel={accountLabel}
+        credits={credits}
+        isAdmin={me?.role === 'admin'}
+        onOpenAdmin={() => setShowAdmin(true)}
+        showBuyPage={showBuyPage}
+        onToggleBuyPage={(v) => setShowBuyPage((prev) => (typeof v === 'boolean' ? v : !prev))}
+        showPasswordForm={showPasswordForm}
+        onTogglePasswordForm={(v) => setShowPasswordForm((prev) => (typeof v === 'boolean' ? v : !prev))}
+        currentPassword={currentPassword}
+        setCurrentPassword={setCurrentPassword}
+        newPassword={newPassword}
+        setNewPassword={setNewPassword}
+        newPasswordConfirm={newPasswordConfirm}
+        setNewPasswordConfirm={setNewPasswordConfirm}
+        passwordBusy={passwordBusy}
+        passwordMessage={passwordMessage}
+        handleChangePassword={handleChangePassword}
+        onLogout={handleLogout}
+        currentStep={currentStep}
+        setCurrentStep={(s) => { setCurrentStep(s); setResult(null) }}
+        inputText={inputText}
+        setInputText={setInputText}
+        targetDuration={targetDuration}
+        setTargetDuration={setTargetDuration}
+        estimatedCredits={estimatedCredits}
+        busy={busy}
+        runStep={runStep}
+        saveCurrentToChat={saveCurrentToChat}
+        result={result}
+        playerKey={playerKey}
+        onDownloadResult={downloadResult}
+        onImportResultToNextStep={importResultToNextStep}
+        onLoadHistoryItem={(it) => { setResult(it.result); setSelectedChatItemId(it.id); setPlayerKey(it.id + '_' + Date.now()) }}
+        deleteChatItem={deleteChatItem}
+        STEP_INFO={STEP_INFO}
+        step1Payload={step1Payload}
+        step2Payload={step2Payload}
+        step3Payload={step3Payload}
+        step4Payload={step4Payload}
+        step5Payload={step5Payload}
+        step6Payload={step6Payload}
+        creditsWarning={credits > 0 && estimatedCredits > credits ? 'Chú ý: credits ước tính vượt quá số dư hiện tại.' : ''}
+        buyCreditsComponent={<BuyCredits pageMode onBought={(c) => { setCredits(c); setShowBuyPage(false); }} onClose={() => setShowBuyPage(false)} />}
+      />
+    )
   }
 
-  // ==========================================
-  // RENDER LỚP 2: ĐIỀU HƯỚNG ROUTE CHO ADMIN QUẢN TRỊ
-  // ==========================================
-  if (me && me.role === 'admin') {
-    return <AdminPanel />
-  }
-
-  // ==========================================
-  // RENDER LỚP 3: WORKSPACE THƯỜNG (CẢI TIẾN SIDEBAR TỐI GIẢN)
-  // ==========================================
   return (
-    <WorkspacePage
-      isMobileMenuOpen={isMobileMenuOpen}
-      onToggleMobileMenu={() => setIsMobileMenuOpen((prev) => !prev)}
-      chats={chats}
-      selectedChatId={selectedChatId}
-      createNewChat={createNewChat}
-      selectChat={selectChat}
-      openMenuId={openMenuId}
-      onToggleMenu={toggleMenu}
-      renameChat={renameChat}
-      deleteChat={deleteChat}
-      accountLabel={accountLabel}
-      credits={credits}
-      showBuyPage={showBuyPage}
-      onToggleBuyPage={(v) => setShowBuyPage((prev) => (typeof v === 'boolean' ? v : !prev))}
-      showPasswordForm={showPasswordForm}
-      onTogglePasswordForm={(v) => setShowPasswordForm((prev) => (typeof v === 'boolean' ? v : !prev))}
-      currentPassword={currentPassword}
-      setCurrentPassword={setCurrentPassword}
-      newPassword={newPassword}
-      setNewPassword={setNewPassword}
-      newPasswordConfirm={newPasswordConfirm}
-      setNewPasswordConfirm={setNewPasswordConfirm}
-      passwordBusy={passwordBusy}
-      passwordMessage={passwordMessage}
-      handleChangePassword={handleChangePassword}
-      onLogout={handleLogout}
-      currentStep={currentStep}
-      setCurrentStep={(s) => { setCurrentStep(s); setResult(null) }}
-      inputText={inputText}
-      setInputText={setInputText}
-      targetDuration={targetDuration}
-      setTargetDuration={setTargetDuration}
-      estimatedCredits={estimatedCredits}
-      busy={busy}
-      runStep={runStep}
-      saveCurrentToChat={saveCurrentToChat}
-      result={result}
-      playerKey={playerKey}
-      onDownloadResult={downloadResult}
-      onImportResultToNextStep={importResultToNextStep}
-      onLoadHistoryItem={(it) => { setResult(it.result); setSelectedChatItemId(it.id); setPlayerKey(it.id + '_' + Date.now()) }}
-      deleteChatItem={deleteChatItem}
-      STEP_INFO={STEP_INFO}
-      step1Payload={step1Payload}
-      step2Payload={step2Payload}
-      step3Payload={step3Payload}
-      step4Payload={step4Payload}
-      step5Payload={step5Payload}
-      step6Payload={step6Payload}
-      creditsWarning={credits > 0 && estimatedCredits > credits ? 'Chú ý: credits ước tính vượt quá số dư hiện tại.' : ''}
-      buyCreditsComponent={<BuyCredits pageMode onBought={(c) => { setCredits(c); setShowBuyPage(false); }} onClose={() => setShowBuyPage(false)} />}
-    />
+    <>
+      <Toaster position="top-right" toastOptions={{ duration: 3000, style: { borderRadius: 10, fontSize: 14 } }} />
+      <ConfirmModal
+        open={confirmState.open}
+        title={confirmState.title}
+        message={confirmState.message}
+        onConfirm={() => closeConfirm(true)}
+        onCancel={() => closeConfirm(false)}
+      />
+      <PromptModal
+        open={promptState.open}
+        title={promptState.title}
+        message={promptState.message}
+        defaultValue={promptState.defaultValue}
+        onConfirm={(val) => closePrompt(val)}
+        onCancel={() => closePrompt(null)}
+      />
+      {page}
+    </>
   )
 }
 

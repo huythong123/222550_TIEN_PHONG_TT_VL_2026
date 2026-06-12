@@ -3,8 +3,7 @@ import logging
 import time
 import jwt
 from typing import Optional, Dict, Any
-from app.config import settings
-from app.models.settings_store import get_setting
+from app.utils.settings_helper import get_db_setting
 
 logger = logging.getLogger(__name__)
 
@@ -13,8 +12,8 @@ class KlingService:
     BASE = "https://api-singapore.klingai.com/v1/videos/text2video"
 
     def __init__(self, api_key: Optional[str] = None):
-        # legacy: api_key may be provided, but prefer settings
-        self.api_key = api_key or settings.KLING_API_KEY
+        # legacy: api_key may be provided, but prefer DB setting
+        self.api_key = api_key or get_db_setting('KLING_API_KEY')
 
     def _headers(self) -> Dict[str, str]:
         token = self.generate_token()
@@ -24,11 +23,8 @@ class KlingService:
         }
 
     def generate_token(self) -> str:
-        # Prefer values stored in system settings (DB) so admin can update keys at runtime
-        ak_entry = get_setting('KLING_ACCESS_KEY')
-        sk_entry = get_setting('KLING_API_KEY')
-        ak = ak_entry.get('value') if ak_entry else getattr(settings, 'KLING_ACCESS_KEY', None)
-        sk = sk_entry.get('value') if sk_entry else getattr(settings, 'KLING_API_KEY', None)
+        ak = get_db_setting('KLING_ACCESS_KEY')
+        sk = get_db_setting('KLING_API_KEY')
         if not ak or not isinstance(ak, str) or not ak.strip():
             raise RuntimeError('KLING_ACCESS_KEY is not configured')
         if not sk or not isinstance(sk, str) or not sk.strip():

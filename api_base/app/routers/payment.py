@@ -10,6 +10,7 @@ from app.models.payment_store import create_payment, get_payment_by_id, update_p
 from app.models.user_store import get_user_by_id, adjust_user_credits
 from app.models.transaction_store import create_transaction
 from app.utils.sepay_helper import get_last_transactions
+from app.utils.settings_helper import get_db_setting
 from app.security.auth import get_current_user
 
 router = APIRouter()
@@ -83,8 +84,8 @@ def api_create_payment(payload: CreatePaymentIn, user=Depends(get_current_user))
     # Sepay requires the transfer description to contain 'SEVQR' to route correctly.
     # Prefix with 'SEVQR ' to ensure the required token is present.
     qr_text = f"SEVQR {getattr(settings, 'NAME_WEB', settings.APP_NAME)}NAPTOKEN{hex_id}"
-    bank = getattr(settings, 'SEPAY_BANK_BRAND', '')
-    acc = getattr(settings, 'SEPAY_ACCOUNT_NUMBER', '')
+    bank = get_db_setting('SEPAY_BANK_BRAND')
+    acc = get_db_setting('SEPAY_ACCOUNT_NUMBER')
     # Sepay QR image endpoint. Use URL-encoded description (des) parameter
     qr_url = None
     if bank and acc:
@@ -93,7 +94,7 @@ def api_create_payment(payload: CreatePaymentIn, user=Depends(get_current_user))
         except Exception:
             qr_url = None
 
-    account_name = getattr(settings, 'SEPAY_ACCOUNT_NAME', None)
+    account_name = get_db_setting('SEPAY_ACCOUNT_NAME') or None
 
     return {
         'hex_id': hex_id,
@@ -198,7 +199,7 @@ def api_payment_status(hex_id: str, user=Depends(get_current_user)):
 
             if (not content or str(content).strip() == '') and amount + tolerance >= float(expected):
                 # check if tx goes to our configured account
-                configured_acc = str(getattr(settings, 'SEPAY_ACCOUNT_NUMBER', '') or '')
+                configured_acc = get_db_setting('SEPAY_ACCOUNT_NUMBER')
                 if configured_acc and configured_acc in to_account_str:
                     print(f"[payment.status] fallback matched tx id={tx.get('id')} amt={amount} to_acc={to_account_str} expected={expected}")
                     existing = get_payment_by_matched_tx(str(tx.get('id')))

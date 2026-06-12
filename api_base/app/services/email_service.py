@@ -2,10 +2,11 @@ import smtplib
 from email.message import EmailMessage
 
 from app.config import settings
+from app.utils.settings_helper import get_db_setting
 
 
 def smtp_ready() -> bool:
-    return bool(settings.SMTP_USERNAME and settings.SMTP_PASSWORD and settings.SMTP_FROM_EMAIL)
+    return bool(get_db_setting('SMTP_USERNAME') and get_db_setting('SMTP_PASSWORD') and get_db_setting('SMTP_FROM_EMAIL'))
 
 
 def build_verification_url(token: str) -> str:
@@ -18,7 +19,7 @@ def send_verification_email(recipient_email: str, verification_url: str) -> None
 
     message = EmailMessage()
     message["Subject"] = "Xác thực email để đăng nhập AutoAds"
-    message["From"] = f'{settings.SMTP_FROM_NAME} <{settings.SMTP_FROM_EMAIL}>'
+    message["From"] = f'{get_db_setting("SMTP_FROM_NAME")} <{get_db_setting("SMTP_FROM_EMAIL")}>'
     message["To"] = recipient_email
     message.set_content(
         "Vui lòng xác thực email để hoàn tất đăng ký.\n\n"
@@ -40,7 +41,7 @@ def send_verification_email(recipient_email: str, verification_url: str) -> None
         subtype="html",
     )
 
-    with smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT) as server:
+    with smtplib.SMTP(get_db_setting('SMTP_HOST'), int(get_db_setting('SMTP_PORT', '587'))) as server:
         server.starttls()
-        server.login(settings.SMTP_USERNAME, settings.SMTP_PASSWORD)
+        server.login(get_db_setting('SMTP_USERNAME'), get_db_setting('SMTP_PASSWORD'))
         server.send_message(message)

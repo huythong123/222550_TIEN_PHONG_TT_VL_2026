@@ -3,6 +3,7 @@ import logging
 import asyncio
 from typing import List, TYPE_CHECKING
 from app.config import settings
+from app.utils.settings_helper import get_db_setting
 
 if TYPE_CHECKING:
     from app.models.schemas import SceneData
@@ -19,7 +20,7 @@ class VoiceSystem:
         try:
             from openai import AsyncOpenAI
 
-            self.client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
+            self.client = AsyncOpenAI(api_key=get_db_setting('OPENAI_API_KEY'))
         except Exception as exc:  # pragma: no cover - best-effort
             logger.warning(f"OpenAI AsyncOpenAI client not available: {exc}")
             self.client = None

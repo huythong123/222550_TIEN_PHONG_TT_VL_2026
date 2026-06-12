@@ -113,10 +113,22 @@ async def api_list_settings(admin=Depends(require_admin)):
 
     # Descriptions for common integration keys (shown when description is empty)
     descriptions_map = {
-        'OPENAI_API_KEY': 'OpenAI API key used for prompt/enhancement generation (GPT). Save here to let the app call OpenAI without editing .env. Changing here writes to DB only.',
-        'KLING_API_KEY': 'Kling secret key (used to sign JWT for Kling submission). Keep secret. Changing here writes to DB only.',
+        'OPENAI_API_KEY': 'OpenAI API key used for prompt/enhancement generation (GPT). Save here to let the app call OpenAI without editing .env.',
+        'KLING_API_KEY': 'Kling secret key (used to sign JWT for Kling submission). Keep secret.',
         'KLING_ACCESS_KEY': 'Kling access key (public identifier). Required to generate JWT for Kling API.',
-        'SEPAY_API_KEY': 'SePay payment gateway API key for bank transfer verification.',
+        'SEPAY_API_KEY': 'API key SePay dùng để xác nhận thanh toán ngân hàng.',
+        'SEPAY_ACCOUNT_NUMBER': 'Số tài khoản ngân hàng nhận tiền nạp Credits.',
+        'SEPAY_ACCOUNT_NAME': 'Tên chủ tài khoản ngân hàng.',
+        'SEPAY_BANK_BRAND': 'Tên ngân hàng (VD: Vietcombank, Techcombank, MB Bank).',
+        'GOOGLE_CLIENT_ID': 'Google OAuth Client ID for login with Google.',
+        'GOOGLE_CLIENT_SECRET': 'Google OAuth Client Secret for login with Google.',
+        'GOOGLE_REDIRECT_URI': 'Google OAuth redirect URI (must match Google Cloud Console).',
+        'SMTP_HOST': 'SMTP server hostname for sending emails (e.g. smtp.gmail.com).',
+        'SMTP_PORT': 'SMTP server port (e.g. 587 for TLS).',
+        'SMTP_USERNAME': 'SMTP username (usually your email address).',
+        'SMTP_PASSWORD': 'SMTP password or app password.',
+        'SMTP_FROM_EMAIL': 'From email address for outgoing emails.',
+        'SMTP_FROM_NAME': 'From name displayed in outgoing emails.',
     }
 
     existing_keys = {r['key'] for r in rows}
@@ -156,6 +168,43 @@ async def api_get_setting(key: str, admin=Depends(require_admin)):
     if not s:
         raise HTTPException(status_code=404, detail='Không tìm thấy setting')
     return s
+
+
+class PaymentSettingsIn(BaseModel):
+    sepay_api_key: str = ''
+    sepay_account_number: str = ''
+    sepay_account_name: str = ''
+    sepay_bank_brand: str = ''
+
+
+PAYMENT_SETTING_KEYS = {
+    'sepay_api_key': 'SEPAY_API_KEY',
+    'sepay_account_number': 'SEPAY_ACCOUNT_NUMBER',
+    'sepay_account_name': 'SEPAY_ACCOUNT_NAME',
+    'sepay_bank_brand': 'SEPAY_BANK_BRAND',
+}
+
+
+@router.get('/payment-settings')
+async def api_get_payment_settings(admin=Depends(require_admin)):
+    result = {}
+    for field, key in PAYMENT_SETTING_KEYS.items():
+        s = get_setting(key)
+        result[field] = s['value'] if s else ''
+    return result
+
+
+@router.put('/payment-settings')
+async def api_update_payment_settings(payload: PaymentSettingsIn, admin=Depends(require_admin)):
+    for field, key in PAYMENT_SETTING_KEYS.items():
+        val = getattr(payload, field, '') or ''
+        set_setting(key, val)
+        try:
+            if hasattr(settings, key):
+                setattr(settings, key, val)
+        except Exception:
+            pass
+    return {field: getattr(payload, field, '') for field in PAYMENT_SETTING_KEYS}
 
 
 @router.post('/settings')

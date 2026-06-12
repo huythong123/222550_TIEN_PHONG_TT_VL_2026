@@ -1,4 +1,7 @@
 import React, { useEffect, useState } from 'react'
+import { toast } from 'react-hot-toast'
+import ConfirmModal from './components/ui/ConfirmModal'
+import PromptModal from './components/ui/PromptModal'
 import {
     listPackages,
     createPackage,
@@ -25,7 +28,6 @@ import {
     adjustUserCredits,
     listSettings,
     setSetting,
-    getAdminLogs,
 } from './api'
 
 import AdminSidebar from './components/admin/AdminSidebar'
@@ -38,8 +40,7 @@ import PackageForm from './components/admin/packages/PackageForm'
 import RevenueFilter from './components/admin/revenue/RevenueFilter'
 import RevenueSummary from './components/admin/revenue/RevenueSummary'
 import RevenueTable from './components/admin/revenue/RevenueTable'
-import ApiKeyCard from './components/admin/apiKeys/ApiKeyCard'
-import ApiKeyHistoryModal from './components/admin/apiKeys/ApiKeyHistoryModal'
+import ServiceSettingsForm from './components/admin/integrations/ServiceSettingsForm'
 import './styles/admin.css'
  
 
@@ -56,6 +57,8 @@ function UsersPanel() {
     const [modalPreviewUrl, setModalPreviewUrl] = useState(null)
     const [modalPreviewBlob, setModalPreviewBlob] = useState(null)
     const [showRunTable, setShowRunTable] = useState(true)
+    const [confirmData, setConfirmData] = useState(null)
+    const [promptData, setPromptData] = useState(null)
 
     async function loadUserRuns(u) {
         setSelectedUser(u)
@@ -168,13 +171,13 @@ function UsersPanel() {
 
     async function handlePreview(run) {
         try {
-            if (!run.has_video) { alert('Run này không có video'); return }
+            if (!run.has_video) { toast.error('Run này không có video'); return }
             const base = (import.meta.env.VITE_API_BASE || 'http://localhost:8000/api/v1').replace(/\/$/, '')
             const url = `${base}/admin/users/${selectedUser.id}/runs/${run.run_id}/download`
             const token = localStorage.getItem('auth_token')
             const resp = await fetch(url, { headers: { Authorization: token ? `Bearer ${token}` : '' } })
             if (!resp.ok) {
-                alert('Không thể tải video: ' + resp.statusText)
+                toast.error('Không thể tải video: ' + resp.statusText)
                 return
             }
             const blob = await resp.blob()
@@ -188,7 +191,7 @@ function UsersPanel() {
             setUserPreviewBlobUrl(blobUrl)
             setUserPreviewUrl(blobUrl)
         } catch (e) {
-            alert('Lỗi khi lấy thông tin run: ' + (e.message || e))
+            toast.error('Lỗi khi lấy thông tin run: ' + (e.message || e))
         }
     }
 
@@ -222,7 +225,7 @@ function UsersPanel() {
                 setModalPreviewBlob
             )
         } catch (e) {
-            alert('Không thể preview video: ' + (e.message || e))
+            toast.error('Không thể preview video: ' + (e.message || e))
         }
     }
 
@@ -231,7 +234,7 @@ function UsersPanel() {
             const url = resolveVideoUrl(video.url)
             const token = localStorage.getItem('auth_token')
             const resp = await fetch(url, { headers: { Authorization: token ? `Bearer ${token}` : '' } })
-            if (!resp.ok) { alert('Không thể tải video: ' + resp.statusText); return }
+            if (!resp.ok) { toast.error('Không thể tải video: ' + resp.statusText); return }
             const blob = await resp.blob()
             const a = document.createElement('a')
             const blobUrl = URL.createObjectURL(blob)
@@ -241,7 +244,7 @@ function UsersPanel() {
             a.click()
             a.remove()
             URL.revokeObjectURL(blobUrl)
-        } catch (e) { alert('Lỗi tải: ' + (e.message || e)) }
+        } catch (e) { toast.error('Lỗi tải: ' + (e.message || e)) }
     }
 
     async function handleDownloadRun(run) {
@@ -249,7 +252,7 @@ function UsersPanel() {
         const url = `${base}/admin/users/${selectedUser.id}/runs/${run.run_id}/download`
         const token = localStorage.getItem('auth_token')
         const resp = await fetch(url, { headers: { Authorization: token ? `Bearer ${token}` : '' } })
-        if (!resp.ok) { alert('Không thể tải video: ' + resp.statusText); return }
+        if (!resp.ok) { toast.error('Không thể tải video: ' + resp.statusText); return }
         const blob = await resp.blob()
         const a = document.createElement('a')
         const blobUrl = URL.createObjectURL(blob)
@@ -270,7 +273,7 @@ function UsersPanel() {
                 setUserPreviewBlobUrl
             )
         } catch (e) {
-            alert('Không thể preview video: ' + (e.message || e))
+            toast.error('Không thể preview video: ' + (e.message || e))
         }
     }
 
@@ -278,7 +281,7 @@ function UsersPanel() {
         try {
             await handleDownloadEventVideo({ url: video.final_path || video.video_url || video.url || '' }, { run_id: selectedRunDetail || 'video' })
         } catch (e) {
-            alert('Không thể tải video: ' + (e.message || e))
+            toast.error('Không thể tải video: ' + (e.message || e))
         }
     }
 
@@ -288,52 +291,63 @@ function UsersPanel() {
     }
 
     async function handleRefund(run) {
-        if (!confirm(`Hoàn tiền cho run ${run.run_id} ?`)) return
+        if (!confirmData) {
+            setConfirmData({ message: `Hoàn tiền cho run ${run.run_id} ?`, onResolve: (ok) => { setConfirmData(null); if (ok) doRefund(run) } })
+            return
+        }
+    }
+    async function doRefund(run) {
         try {
             const res = await refundRun(selectedUser.id, run.run_id)
-            alert(`Hoàn tiền ${res.refunded} credits. Số dư hiện: ${res.credits}`)
+            toast.success(`Hoàn tiền ${res.refunded} credits. Số dư hiện: ${res.credits}`)
             await loadUserRuns(selectedUser)
         } catch (e) {
-            alert('Hoàn tiền thất bại: ' + (e.message || e))
+            toast.error('Hoàn tiền thất bại: ' + (e.message || e))
         }
     }
 
     async function handleDelete(run) {
-        if (!confirm(`Xóa run ${run.run_id} (không thể hoàn tác)?`)) return
+        setConfirmData({ message: `Xóa run ${run.run_id} (không thể hoàn tác)?`, onResolve: (ok) => { setConfirmData(null); if (ok) doDelete(run) } })
+    }
+    async function doDelete(run) {
         try {
             await deleteUserLog(selectedUser.id, run.run_id)
             await loadUserRuns(selectedUser)
         } catch (e) {
-            alert('Xóa thất bại: ' + (e.message || e))
+            toast.error('Xóa thất bại: ' + (e.message || e))
         }
     }
 
     async function handleBan() {
         if (!selectedUser) return
-        const reason = prompt('Lý do khóa (tuỳ chọn)')
+        setPromptData({ message: 'Lý do khóa (tuỳ chọn)', defaultValue: '', onResolve: (reason) => { setPromptData(null); doBan(reason) } })
+    }
+    async function doBan(reason) {
         try {
             await banUser(selectedUser.id, reason)
-            alert('Đã khóa')
+            toast.success('Đã khóa')
             loadUserDetails(selectedUser)
-        } catch (e) { alert('Thất bại: ' + (e.message || e)) }
+        } catch (e) { toast.error('Thất bại: ' + (e.message || e)) }
     }
 
     async function handleUnban() {
         if (!selectedUser) return
         try {
             await unbanUser(selectedUser.id)
-            alert('Đã mở khóa')
+            toast.success('Đã mở khóa')
             loadUserDetails(selectedUser)
-        } catch (e) { alert('Thất bại: ' + (e.message || e)) }
+        } catch (e) { toast.error('Thất bại: ' + (e.message || e)) }
     }
 
     async function handleResetPassword() {
         if (!selectedUser) return
-        if (!confirm('Đặt lại mật khẩu cho người dùng này?')) return
+        setConfirmData({ message: 'Đặt lại mật khẩu cho người dùng này?', onResolve: (ok) => { setConfirmData(null); if (ok) doResetPassword() } })
+    }
+    async function doResetPassword() {
         try {
             const res = await resetUserPassword(selectedUser.id)
-            alert('Mật khẩu tạm thời: ' + res.temporary_password)
-        } catch (e) { alert('Thất bại: ' + (e.message || e)) }
+            toast.success('Mật khẩu tạm thời: ' + res.temporary_password)
+        } catch (e) { toast.error('Thất bại: ' + (e.message || e)) }
     }
 
     function downloadLinkForRun(run) {
@@ -359,21 +373,21 @@ function UsersPanel() {
                         onDeltaInputChange={setDeltaInput}
                         onSetCredits={async () => {
                             const v = parseInt(creditsInput || '0')
-                            if (isNaN(v)) return alert('Giá trị không hợp lệ')
+                            if (isNaN(v)) return toast.error('Giá trị không hợp lệ')
                             try {
                                 await setUserCredits(selectedUser.id, v)
-                                alert('Đã đặt credits')
+                                toast.success('Đã đặt credits')
                                 await loadUserDetails(selectedUser)
-                            } catch (e) { alert('Lỗi: ' + (e.message || e)) }
+                            } catch (e) { toast.error('Lỗi: ' + (e.message || e)) }
                         }}
                         onAdjustCredits={async () => {
                             const v = parseInt(deltaInput || '0')
-                            if (isNaN(v)) return alert('Giá trị không hợp lệ')
+                            if (isNaN(v)) return toast.error('Giá trị không hợp lệ')
                             try {
                                 await adjustUserCredits(selectedUser.id, v)
-                                alert('Đã cập nhật credits')
+                                toast.success('Đã cập nhật credits')
                                 await loadUserDetails(selectedUser)
-                            } catch (e) { alert('Lỗi: ' + (e.message || e)) }
+                            } catch (e) { toast.error('Lỗi: ' + (e.message || e)) }
                         }}
                         onPreviewVideo={async (video) => {
                             if (!video) return
@@ -561,6 +575,25 @@ function UsersPanel() {
                     </div>
                 </div>
             )}
+            {confirmData && (
+                <ConfirmModal
+                    open
+                    title="Xác nhận"
+                    message={confirmData.message}
+                    onConfirm={() => confirmData.onResolve(true)}
+                    onCancel={() => confirmData.onResolve(false)}
+                />
+            )}
+            {promptData && (
+                <PromptModal
+                    open
+                    title="Nhập thông tin"
+                    message={promptData.message}
+                    defaultValue={promptData.defaultValue || ''}
+                    onConfirm={(val) => promptData.onResolve(val)}
+                    onCancel={() => promptData.onResolve(null)}
+                />
+            )}
         </div>
     )
 }
@@ -595,7 +628,7 @@ function PackagesPanel() {
     }
 
     async function remove(id) {
-        if (!confirm('Xác nhận xóa gói này?')) return
+        if (!window.confirm('Xác nhận xóa gói này?')) return
         await deletePackage(id)
         if (selected && selected.id === id) { setSelected(null); setForm({ name: '', credits: 0, price_vnd: 0 }) }
         await reload()
@@ -871,7 +904,7 @@ function RevenueReport() {
     )
 }
 
-export default function AdminPanel() {
+export default function AdminPanel({ onBack }) {
     const [tab, setTab] = useState('Dashboard');
     const [dashboardCounts, setDashboardCounts] = useState({})
     const [monthlyRevenue, setMonthlyRevenue] = useState([])
@@ -909,7 +942,7 @@ export default function AdminPanel() {
             </aside>
 
             <div className="admin-main">
-                <AdminHeader onLogout={() => { localStorage.clear(); window.location.reload(); }} />
+                <AdminHeader onBack={onBack} onLogout={() => { localStorage.clear(); window.location.reload(); }} />
 
                 <main className="admin-content">
                     {tab === 'Dashboard' && <DashboardOverview counts={dashboardCounts} monthlyRevenue={monthlyRevenue} recentUsers={recentUsers} />}
@@ -924,196 +957,110 @@ export default function AdminPanel() {
 }
 
 function IntegrationsPanel() {
-    const [settings, setSettingsState] = useState([])
-    const [loading, setLoading] = useState(false)
-    const [edits, setEdits] = useState({})
-    const [logs, setLogs] = useState([])
-    const [logLoading, setLogLoading] = useState(false)
-    const [revealed, setRevealed] = useState({})
+    const [settings, setSettings] = useState([])
+    const [loading, setLoading] = useState(true)
+    const [subTab, setSubTab] = useState('openai')
 
-    // Thêm state để quản lý Key nào đang được mở popup lịch sử thay đổi
-    const [activeLogKey, setActiveLogKey] = useState(null)
-
-    useEffect(() => {
-        async function load() {
-            setLoading(true)
-            try {
-                const s = await listSettings()
-                setSettingsState(s || [])
-                try {
-                    setLogLoading(true)
-                    const l = await getAdminLogs(500, 0) // Tăng limit để lấy nhiều log hơn phục vụ việc filter theo key
-                    setLogs(l || [])
-                } catch (e) {
-                    setLogs([])
-                } finally {
-                    setLogLoading(false)
-                }
-            } catch (e) {
-                setSettingsState([])
-            } finally {
-                setLoading(false)
-            }
-        }
-        load()
-    }, [])
-
-    function onEdit(key, field, value) {
-        setEdits(prev => ({ ...prev, [key]: { ...(prev[key] || {}), [field]: value } }))
-    }
-
-    async function onSave(key) {
-        const orig = settings.find(s => s.key === key) || {}
-        // Nếu người dùng chưa tự gõ mô tả mới, lấy luôn mô tả hệ thống tự động để lưu vào DB
-        const finalDescription = edits[key] && edits[key].description !== undefined
-            ? edits[key].description
-            : getSystemDescription(key, orig.description);
-
-        const payload = {
-            key,
-            value: edits[key] && edits[key].value !== undefined ? edits[key].value : (orig.value || ''),
-            description: finalDescription,
-        }
+    async function loadSettings() {
+        setLoading(true)
         try {
-            await setSetting(payload)
             const s = await listSettings()
-            setSettingsState(s || [])
-            // Tải lại admin logs để cập nhật lịch sử mới nhất
-            const l = await getAdminLogs(500, 0)
-            setLogs(l || [])
-            setEdits(prev => { const copy = { ...prev }; delete copy[key]; return copy })
-            alert('Đã cập nhật key vào hệ thống.');
+            setSettings(s || [])
         } catch (e) {
-            alert('Lưu thất bại: ' + (e.message || e))
+            setSettings([])
+        } finally {
+            setLoading(false)
         }
     }
 
-    function maskValue(v) {
-        if (v === null || v === undefined) return ''
-        const s = String(v)
-        if (s.length <= 8) return '****' + s.slice(-4)
-        return '****' + s.slice(-8)
+    useEffect(() => { loadSettings() }, [])
+
+    const tabs = [
+        { key: 'openai', label: 'OpenAI' },
+        { key: 'kling', label: 'Kling AI' },
+        { key: 'sepay', label: 'SePay (Ngân hàng)' },
+        { key: 'google', label: 'Google OAuth' },
+        { key: 'smtp', label: 'SMTP (Email)' },
+    ]
+
+    const tabBar = {
+        display: 'flex', gap: 4, marginBottom: 24, flexWrap: 'wrap',
+        borderBottom: '2px solid var(--border)', paddingBottom: 0,
     }
+    const tabBtn = (active) => ({
+        padding: '10px 20px', borderRadius: '8px 8px 0 0', cursor: 'pointer', fontWeight: 600,
+        fontSize: 14, border: 'none', background: active ? '#2563eb' : 'transparent',
+        color: active ? '#ffffff' : '#1e293b', transition: 'all 0.15s',
+    })
 
-    function toggleReveal(id) {
-        setRevealed(prev => ({ ...prev, [id]: !prev[id] }))
-    }
+    if (loading) return <div className="card" style={{ maxWidth: 900 }}><p>Đang tải...</p></div>
 
-    // Hàm tiện ích hỗ trợ bóc tách tên Key từ dữ liệu JSON String của Log
-    function getKeyNameFromLog(l) {
-        try {
-            if (l.details && typeof l.details === 'object') {
-                return l.details.setting_key || l.details.key || '';
-            }
-            if (l.details && typeof l.details === 'string') {
-                const parsed = JSON.parse(l.details);
-                return parsed.setting_key || parsed.key || '';
-            }
-        } catch (e) {
-            const match = String(l.details || '').match(/"(?:setting_key|key)"\s*:\s*"([^"]+)"/);
-            if (match) return match[1];
-        }
-        return '';
-    }
-
-    // Hàm tự động trả về mô tả chuẩn tiếng Việt theo từng loại từ khóa cấu hình hệ thống
-    function getSystemDescription(key, customDesc) {
-        // Nếu trong DB đã có mô tả tùy chỉnh do bạn tự gõ trước đó và không chứa text mặc định của môi trường, giữ nguyên nó
-        if (customDesc && customDesc.trim() !== '' && !customDesc.includes('From environment')) {
-            return customDesc;
-        }
-
-        const upperKey = String(key).toUpperCase();
-        if (upperKey.includes('SEPAY')) {
-            return 'API Key SePay dùng để xác nhận thanh toán và tự động cộng Credits cho người dùng.';
-        }
-
-        if (
-            upperKey.includes('KLING_ACCESS_KEY') ||
-            upperKey.includes('KLING_SECRET_KEY') ||
-            upperKey.includes('KLING')
-        ) {
-            return 'API Key kết nối Kling AI để tạo và render video từ kịch bản quảng cáo.';
-        }
-
-        if (
-            upperKey.includes('OPENAI_API_KEY') ||
-            upperKey.includes('OPENAI') ||
-            upperKey.includes('GPT')
-        ) {
-            return 'API Key OpenAI dùng để tạo kịch bản, prompt và xử lý nội dung AI.';
-        }
-
-        if (
-            upperKey.includes('VITE_API_BASE') ||
-            upperKey.includes('API_URL') ||
-            upperKey.includes('BASE_URL')
-        ) {
-            return 'Địa chỉ API kết nối giữa giao diện người dùng và máy chủ hệ thống.';
-        }
-
-        if (
-            upperKey.includes('STORAGE') ||
-            upperKey.includes('PATH') ||
-            upperKey.includes('RENDER')
-        ) {
-            return 'Cấu hình đường dẫn lưu trữ video, dữ liệu và tệp hệ thống.';
-        }
-        return 'Mã cấu hình tích hợp tiện ích hệ thống. Cung cấp thông số biến môi trường môi trường vận hành nội bộ phục vụ cho các tiến trình đồng bộ dữ liệu quản trị viên và người dùng.';
-    }
+    const openaiFields = [
+        { key: 'OPENAI_API_KEY', label: 'API Key', placeholder: 'sk-...' },
+    ]
+    const klingFields = [
+        { key: 'KLING_ACCESS_KEY', label: 'Access Key' },
+        { key: 'KLING_API_KEY', label: 'Secret Key' },
+    ]
+    const sepayFields = [
+        { key: 'SEPAY_API_KEY', label: 'API Key', placeholder: 'SePay API Key' },
+        { key: 'SEPAY_ACCOUNT_NUMBER', label: 'Số tài khoản', placeholder: '102887327647' },
+        { key: 'SEPAY_ACCOUNT_NAME', label: 'Chủ tài khoản', placeholder: 'LU HUY THONG' },
+        { key: 'SEPAY_BANK_BRAND', label: 'Ngân hàng', placeholder: 'VietinBank' },
+    ]
+    const googleFields = [
+        { key: 'GOOGLE_CLIENT_ID', label: 'Client ID' },
+        { key: 'GOOGLE_CLIENT_SECRET', label: 'Client Secret' },
+        { key: 'GOOGLE_REDIRECT_URI', label: 'Redirect URI', placeholder: 'http://localhost:8000/api/v1/auth/google/callback' },
+    ]
+    const smtpFields = [
+        { key: 'SMTP_HOST', label: 'Host', placeholder: 'smtp.gmail.com' },
+        { key: 'SMTP_PORT', label: 'Port', placeholder: '587' },
+        { key: 'SMTP_USERNAME', label: 'Username', placeholder: 'your@email.com' },
+        { key: 'SMTP_PASSWORD', label: 'Password' },
+        { key: 'SMTP_FROM_EMAIL', label: 'From Email', placeholder: 'noreply@example.com' },
+        { key: 'SMTP_FROM_NAME', label: 'From Name', placeholder: 'AutoAds System' },
+    ]
 
     return (
-        <div>
-            <div
-                style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    marginBottom: 24
-                }}
-            >
-                <div>
-                    <h2 style={{ margin: 0 }}>Tích hợp & API Keys</h2>
-                    <p style={{ margin: '6px 0 0', color: 'var(--text-soft)' }}>
-                        Quản lý các API Key và cấu hình hệ thống
-                    </p>
-                </div>
+        <div style={{ maxWidth: 900 }}>
+            <div style={{ marginBottom: 20 }}>
+                <h2 style={{ margin: 0 }}>Tích hợp & API Keys</h2>
+                <p style={{ margin: '6px 0 0', color: 'var(--text-soft)' }}>
+                    Quản lý cấu hình từng dịch vụ bên thứ ba
+                </p>
             </div>
 
-            {loading ? (
-                <div className="card">Đang tải...</div>
-            ) : (
-                <div
-                    style={{
-                        display: 'grid',
-                        gridTemplateColumns: 'repeat(auto-fit,minmax(500px,1fr))',
-                        gap: 20
-                    }}
-                >
-                    {(settings || []).map((s) => {
-                        const key = s.key
-                        const edited = edits[key] || {}
-                        return (
-                            <ApiKeyCard
-                                key={key}
-                                keyObj={s}
-                                edited={edited}
-                                onEdit={onEdit}
-                                onOpenHistory={(k) => setActiveLogKey(k)}
-                                onSave={(k) => onSave(k)}
-                            />
-                        )
-                    })}
-                </div>
-            )}
+            <div style={tabBar}>
+                {tabs.map(t => (
+                    <button key={t.key} style={tabBtn(subTab === t.key)} onClick={() => setSubTab(t.key)}>
+                        {t.label}
+                    </button>
+                ))}
+            </div>
 
-            <ApiKeyHistoryModal
-                activeLogKey={activeLogKey}
-                logs={logs}
-                revealedMap={revealed}
-                onClose={() => setActiveLogKey(null)}
-                onToggleReveal={(id) => toggleReveal(id)}
-            />
+            <div className="card">
+                {subTab === 'openai' && (
+                    <ServiceSettingsForm settings={settings} onUpdated={loadSettings}
+                        title="OpenAI" fields={openaiFields} />
+                )}
+                {subTab === 'kling' && (
+                    <ServiceSettingsForm settings={settings} onUpdated={loadSettings}
+                        title="Kling AI" fields={klingFields} />
+                )}
+                {subTab === 'sepay' && (
+                    <ServiceSettingsForm settings={settings} onUpdated={loadSettings}
+                        title="SePay (Ngân hàng)" fields={sepayFields} />
+                )}
+                {subTab === 'google' && (
+                    <ServiceSettingsForm settings={settings} onUpdated={loadSettings}
+                        title="Google OAuth" fields={googleFields} />
+                )}
+                {subTab === 'smtp' && (
+                    <ServiceSettingsForm settings={settings} onUpdated={loadSettings}
+                        title="SMTP (Email)" fields={smtpFields} />
+                )}
+            </div>
         </div>
     )
 }

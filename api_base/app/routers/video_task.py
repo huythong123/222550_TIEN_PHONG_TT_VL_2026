@@ -30,16 +30,10 @@ from app.models.user_store import adjust_user_credits
 
 
 def require_non_admin_user(payload=Depends(get_current_user)):
-    # kept for compatibility but prefer require_user_with_credits
-    if payload.get('is_admin'):
-        raise HTTPException(status_code=403, detail='Tài khoản admin chỉ được phép quản lý, không được tạo video')
     return payload
 
 
 def require_user_with_credits(payload=Depends(get_current_user)):
-    if payload.get('is_admin'):
-        raise HTTPException(status_code=403, detail='Tài khoản admin chỉ được phép quản lý, không được tạo video')
-
     try:
         user_id = int(payload.get('sub'))
     except Exception:
@@ -72,8 +66,15 @@ async def credits_estimate(payload: CreditsEstimateRequest, user=Depends(get_cur
 crawler = CrawlerService()
 script_gen = ScriptService()
 scene_gen = SceneService()
-prompt_gen = PromptService()
-    # image_gen removed: we no longer create static image prompts or images
+_prompt_gen: PromptService | None = None
+
+def get_prompt_gen() -> PromptService:
+    global _prompt_gen
+    if _prompt_gen is None:
+        _prompt_gen = PromptService()
+    return _prompt_gen
+
+# image_gen removed: we no longer create static image prompts or images
 voice_gen = VoiceSystem()
 video_gen = VideoSystem()
 merger = MergeService()
@@ -397,7 +398,7 @@ async def step4_prompt(scenes: List[SceneData], user=Depends(require_user_with_c
         user_id = user.get("sub")
         run_id = scenes[0].run_id if scenes else None
         run_id, _ = create_or_get_run(user_id, run_id)
-        enhanced = await prompt_gen.enhance_scenes(scenes)
+        enhanced = await get_prompt_gen().enhance_scenes(scenes)
         for scene in enhanced:
             scene.run_id = run_id
         append_run_log(

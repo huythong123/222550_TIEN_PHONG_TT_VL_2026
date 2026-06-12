@@ -2,7 +2,7 @@ import React from 'react'
 // PasswordForm UI removed per request
 
 export default function Sidebar(props) {
-  const { isMobileMenuOpen, chats, selectedChatId, createNewChat, selectChat, openMenuId, onToggleMenu, renameChat, deleteChat, accountLabel, credits, showBuyPage, onToggleBuyPage, showPasswordForm, onTogglePasswordForm, currentPassword, setCurrentPassword, newPassword, setNewPassword, newPasswordConfirm, setNewPasswordConfirm, passwordBusy, passwordMessage, handleChangePassword, onLogout } = props
+  const { isMobileMenuOpen, chats, selectedChatId, createNewChat, selectChat, openMenuId, onToggleMenu, renameChat, deleteChat, accountLabel, credits, showBuyPage, onToggleBuyPage, showPasswordForm, onTogglePasswordForm, currentPassword, setCurrentPassword, newPassword, setNewPassword, newPasswordConfirm, setNewPasswordConfirm, passwordBusy, passwordMessage, handleChangePassword, onLogout, isAdmin, onOpenAdmin } = props
 
   return (
     <aside
@@ -92,10 +92,18 @@ export default function Sidebar(props) {
       <div style={{ borderTop: '1px solid #e2e8f0', paddingTop: '16px', textAlign: 'left', flexShrink: 0, display: 'flex', flexDirection: 'column', gap: '6px' }}>
         <div style={{ fontWeight: '700', fontSize: '14.5px', color: '#1e293b' }}>{accountLabel}</div>
         <div style={{ fontSize: '12px', color: '#64748b' }}>Ví tín dụng: <span style={{ color: '#0f766e', fontWeight: '700' }}>{credits} Credits</span></div>
-        <button onClick={() => { onToggleBuyPage && onToggleBuyPage(); onTogglePasswordForm && onTogglePasswordForm(false); }} style={{ width: '100%', padding: '10px', background: showBuyPage ? '#64748b' : 'rgba(15, 118, 110, 0.08)', color: showBuyPage ? '#fff' : '#0f766e', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: '700', fontSize: '13px', transition: 'all 0.2s', marginTop: '8px' }}>
+        <a href="#home" style={{ width: '100%', padding: '10px', background: 'none', border: '1px solid #e2e8f0', color: '#1e293b', borderRadius: '8px', cursor: 'pointer', fontWeight: '600', fontSize: '13px', textDecoration: 'none', display: 'inline-block', textAlign: 'center', marginTop: '8px', boxSizing: 'border-box' }}>
+          Trang chủ
+        </a>
+        <button onClick={() => { onToggleBuyPage && onToggleBuyPage(); onTogglePasswordForm && onTogglePasswordForm(false); }} style={{ width: '100%', padding: '10px', background: showBuyPage ? '#64748b' : 'rgba(15, 118, 110, 0.08)', color: showBuyPage ? '#fff' : '#0f766e', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: '700', fontSize: '13px', transition: 'all 0.2s' }}>
           {showBuyPage ? 'Quay lại Workspace' : 'Mua Credits'}
         </button>
         {/* Password change UI removed */}
+        {isAdmin && (
+          <button onClick={onOpenAdmin} style={{ width: '100%', padding: '10px', background: '#1e293b', color: '#fff', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: '600', fontSize: '13px', marginTop: '8px' }}>
+            Quản trị
+          </button>
+        )}
         <button onClick={onLogout} style={{ width: '100%', padding: '10px', background: 'none', border: '1px solid #e2e8f0', color: '#ef4444', borderRadius: '8px', cursor: 'pointer', fontWeight: '600', fontSize: '13px', marginTop: '8px' }}>Đăng xuất</button>
       </div>
     </aside>

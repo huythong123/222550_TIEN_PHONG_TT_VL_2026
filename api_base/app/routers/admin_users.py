@@ -19,6 +19,7 @@ from pathlib import Path
 from app.services import render_storage_service
 from app.db import SessionLocal
 from app.models.video_entity import VideoEntity
+from app.models.user_entity import UserEntity
 from app.models.credit_transaction_entity import CreditTransactionEntity
 from app.models.activity_log_entity import ActivityLogEntity
 from app.models.login_log_entity import LoginLogEntity
@@ -416,9 +417,6 @@ async def api_register_run(user_id: int, run_id: str, payload: RegisterRunPayloa
 
 @router.get('/users/{user_id}/details')
 async def api_user_details(user_id: int, admin=Depends(require_admin)):
-    with SessionLocal() as db:
-        u = db.query(VideoEntity).session.bind.execute("select * from users where id = :id", {'id': user_id})
-        # fallback to get_user_by_id for convenience
     user = get_user_by_id(user_id)
     if not user:
         raise HTTPException(status_code=404, detail='User not found')
@@ -475,10 +473,11 @@ class BanPayload(BaseModel):
 @router.post('/users/{user_id}/ban')
 async def api_ban_user(user_id: int, payload: BanPayload, admin=Depends(require_admin)):
     with SessionLocal() as db:
-        r = db.execute("select id from users where id = :id", {'id': user_id}).first()
-        if not r:
+        user = db.query(UserEntity).filter(UserEntity.id == user_id).first()
+        if not user:
             raise HTTPException(status_code=404, detail='User not found')
-        db.execute("UPDATE users SET is_banned = 1, ban_reason = :reason WHERE id = :id", {'id': user_id, 'reason': payload.reason})
+        user.is_banned = True
+        user.ban_reason = payload.reason
         db.commit()
     try:
         add_admin_log(admin.get('sub') and int(admin.get('sub')) or None, 'ban_user', target_user_id=int(user_id), details=payload.reason)
@@ -490,10 +489,11 @@ async def api_ban_user(user_id: int, payload: BanPayload, admin=Depends(require_
 @router.post('/users/{user_id}/unban')
 async def api_unban_user(user_id: int, admin=Depends(require_admin)):
     with SessionLocal() as db:
-        r = db.execute("select id from users where id = :id", {'id': user_id}).first()
-        if not r:
+        user = db.query(UserEntity).filter(UserEntity.id == user_id).first()
+        if not user:
             raise HTTPException(status_code=404, detail='User not found')
-        db.execute("UPDATE users SET is_banned = 0, ban_reason = NULL WHERE id = :id", {'id': user_id})
+        user.is_banned = False
+        user.ban_reason = None
         db.commit()
     try:
         add_admin_log(admin.get('sub') and int(admin.get('sub')) or None, 'unban_user', target_user_id=int(user_id), details='unbanned')
@@ -508,10 +508,10 @@ async def api_reset_user_password(user_id: int, admin=Depends(require_admin)):
     tmp = secrets.token_urlsafe(10)
     hashed = get_password_hash(tmp)
     with SessionLocal() as db:
-        r = db.execute("select id from users where id = :id", {'id': user_id}).first()
-        if not r:
+        user = db.query(UserEntity).filter(UserEntity.id == user_id).first()
+        if not user:
             raise HTTPException(status_code=404, detail='User not found')
-        db.execute("UPDATE users SET hashed_password = :hpw WHERE id = :id", {'hpw': hashed, 'id': user_id})
+        user.hashed_password = hashed
         db.commit()
     try:
         add_admin_log(admin.get('sub') and int(admin.get('sub')) or None, 'reset_password', target_user_id=int(user_id), details='password reset by admin')

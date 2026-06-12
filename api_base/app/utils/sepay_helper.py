@@ -1,16 +1,18 @@
 import requests
-from app.config import settings
+from app.utils.settings_helper import get_db_setting
 
 SEPAY_BASE_URL = "https://my.sepay.vn/userapi/transactions/list"
 
 
 def get_last_transactions(limit: int = 20) -> list:
+    api_key = get_db_setting('SEPAY_API_KEY')
+    account_number = get_db_setting('SEPAY_ACCOUNT_NUMBER')
     headers = {
-        "Authorization": f"Bearer {getattr(settings, 'SEPAY_API_KEY', '')}",
+        "Authorization": f"Bearer {api_key}",
         "Content-Type": "application/json"
     }
     params = {
-        "account_number": getattr(settings, 'SEPAY_ACCOUNT_NUMBER', ''),
+        "account_number": account_number,
         "limit": limit
     }
 
