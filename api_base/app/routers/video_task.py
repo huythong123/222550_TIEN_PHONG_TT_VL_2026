@@ -226,7 +226,7 @@ async def step1_extract(data: URLInput, user=Depends(require_user_with_credits))
 
 
 @router.post("/step2-script", response_model=MasterScript, summary="2. Viết Kịch bản Tổng thể")
-async def step2_script(content: CleanedContent, user=Depends(require_user_with_credits)):
+async def step2_script(content: CleanedContent, target_duration: Optional[int] = None, request: Request = None, user=Depends(require_user_with_credits)):
     try:
         if not content.title or not content.main_text:
             raise HTTPException(status_code=400, detail='Nội dung nguồn (title/main_text) không được để trống')
@@ -234,7 +234,15 @@ async def step2_script(content: CleanedContent, user=Depends(require_user_with_c
         user_id = user.get("sub")
         run_id, _ = create_or_get_run(user_id, content.run_id)
         content.run_id = run_id
-        script = await script_gen.generate_master_script(content)
+        # Coerce target_duration defensively
+        td = None
+        if target_duration is not None:
+            try:
+                td = int(target_duration)
+            except Exception:
+                td = None
+
+        script = await script_gen.generate_master_script(content, target_duration=td)
         script.run_id = run_id
         append_run_log(
             user_id,
@@ -243,6 +251,7 @@ async def step2_script(content: CleanedContent, user=Depends(require_user_with_c
             {
                 "title": content.title,
                 "hook_preview": script.hook[:120],
+                "requested_target_duration": target_duration,
             },
         )
         try:

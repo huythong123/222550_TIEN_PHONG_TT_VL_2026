@@ -172,23 +172,27 @@ def create_user(payload: UserCreate) -> dict:
     )
 
 
-def create_email_user(email: str, password: str) -> dict:
-    local_part = email.split('@', 1)[0].strip().lower()
-    username = local_part or 'user'
+def create_email_user(email: str, password: str, username: str | None = None, verify_email: bool = True) -> dict:
+    if username:
+        desired_username = username.strip().lower()
+    else:
+        local_part = email.split('@', 1)[0].strip().lower()
+        desired_username = local_part or 'user'
+    
     suffix = 1
-
+    
     with SessionLocal() as db:
-        candidate = username
+        candidate = desired_username
         while db.query(UserEntity).filter(UserEntity.username == candidate).first():
             suffix += 1
-            candidate = f"{username}{suffix}"
+            candidate = f"{desired_username}{suffix}"
 
     return _create_user_record(
         username=candidate,
         email=email,
         password=password,
         is_admin=False,
-        verify_email=True,
+        verify_email=verify_email,
     )
 
 

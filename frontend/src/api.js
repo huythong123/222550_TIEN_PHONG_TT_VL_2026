@@ -85,10 +85,10 @@ export function getGoogleLoginUrl() {
   return `${BASE_ROOT}/auth/google/login`
 }
 
-export async function registerUser(email, password) {
-  return request('/auth/register', {
+export async function updateMyPassword(current_password, new_password) {
+  return request('/auth/change-password', {
     method: 'POST',
-    body: { email, password },
+    body: { current_password, new_password },
   })
 }
 
@@ -117,8 +117,9 @@ export function step1Extract(url) {
   })
 }
 
-export function step2Script(payload) {
-  return request('/video/step2-script', {
+export function step2Script(payload, targetDuration = null) {
+  const qs = targetDuration ? `?target_duration=${encodeURIComponent(targetDuration)}` : ''
+  return request(`/video/step2-script${qs}`, {
     method: 'POST',
     body: payload,
   })
@@ -257,6 +258,14 @@ export function getUserAdminLogs(userId, limit = 100, offset = 0) {
 
 export function getMe() {
   return request('/auth/me')
+}
+
+export function getMyChats() {
+  return request('/me/chats')
+}
+
+export function saveMyChats(chats) {
+  return request('/me/chats', { method: 'POST', body: chats })
 }
 
 export function getMyLogs() {

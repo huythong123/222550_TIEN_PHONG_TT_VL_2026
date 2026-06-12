@@ -18,6 +18,7 @@ class MasterScript(BaseModel):
     body: str
     call_to_action: str
     run_id: Optional[str] = None
+    target_duration: Optional[int] = None
 
 
 class SceneData(BaseModel):

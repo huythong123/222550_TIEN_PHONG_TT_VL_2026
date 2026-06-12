@@ -106,8 +106,6 @@ YÊU CẦU:
 
 QUAN TRỌNG VỀ VOICEOVER:
 
-- Toàn bộ voiceover của tất cả scene phải tạo thành một bài thuyết minh liền mạch từ đầu đến cuối video.
-- Voiceover của scene sau phải tiếp nối tự nhiên ý của scene trước.
 - Không được tạo cảm giác như các câu độc lập hoặc danh sách gạch đầu dòng.
 - Mỗi scene chỉ là một phần của câu chuyện tổng thể.
 - Người xem phải cảm giác đang nghe một narrator kể chuyện liên tục.
@@ -169,22 +167,20 @@ QUAN TRỌNG VỀ NỘI DUNG:
 - Scene đầu không cần sử dụng cụm chuyển ý.
 - Scene cuối không được sử dụng cụm chuyển ý.
 
-Các scene ở giữa có thể sử dụng:
 
-- Đầu tiên...
-- Bên cạnh đó...
-- Ngoài ra...
-- Đồng thời...
-- Tiếp theo...
-- Hơn nữa...
+Mỗi scene là một điểm nhấn quảng cáo.
 
-KHÔNG sử dụng:
+Các scene phải liên quan với nhau
+nhưng không bắt buộc tạo cảm giác MC kể chuyện liên tục.
 
-- Cuối cùng...
-- Sau cùng...
-- Kết lại...
+Ưu tiên:
 
-cho scene cuối cùng.
+- Nêu lợi ích
+- Nêu giá trị
+- Nêu điểm nổi bật
+- Nêu cảm xúc
+
+Voiceover của từng scene phải đủ mạnh để đứng độc lập như một cảnh quảng cáo.
 
 - Scene cuối phải tạo cảm giác kết thúc tự nhiên và dẫn tới lời kêu gọi hành động.
 - Scene cuối nên đóng vai trò tổng kết hoặc lời nhắn cuối video.

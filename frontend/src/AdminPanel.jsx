@@ -23,348 +23,31 @@ import {
     downloadRunUrl,
     setUserCredits,
     adjustUserCredits,
+    listSettings,
+    setSetting,
+    getAdminLogs,
 } from './api'
 
-function Sidebar({ tab, setTab }) {
-    const items = [
-        { key: 'Dashboard', label: 'Bảng điều khiển' },
-        { key: 'Users', label: 'Người dùng' },
-        { key: 'Packages', label: 'Gói' },
-        { key: 'Revenue', label: 'Báo cáo doanh thu' },
-    ]
-    return (
-        <div className="admin-sidebar">
-            {items.map((it) => (
-                <div
-                    key={it.key}
-                    className={`admin-menu-item ${tab === it.key ? 'active' : ''}`}
-                    onClick={() => setTab(it.key)}
-                >
-                    {it.label}
-                </div>
-            ))}
-        </div>
-    )
-}
-
-function Dashboard({ setTab }) {
-    const [counts, setCounts] = useState({
-        users: 0,
-        videos: 0,
-        packages: 0,
-        transactions: 0,
-        total_revenue_vnd: 0,
-        total_videos: 0,
-    })
-
-    const [recentUsers, setRecentUsers] = useState([])
-    const [revenue7, setRevenue7] = useState([])
-
-    useEffect(() => {
-        async function load() {
-            try {
-                const stats = await getDashboardStats()
-                const users = await getUsers()
-                setCounts({
-                    users: stats.total_users || (users?.length || 0),
-                    videos: stats.total_videos || 0,
-                    packages: stats.total_packages || 0,
-                    transactions: stats.total_transactions || 0,
-                    total_revenue_vnd: stats.total_revenue_vnd || 0,
-                    total_videos: stats.total_videos || 0,
-                })
-
-                setRecentUsers((users || []).slice(0, 10))
-
-                try {
-                    const tx = await listTransactions(1000, 0)
-                    const now = new Date()
-                    const days = []
-                    for (let i = 6; i >= 0; i--) {
-                        const d = new Date(now)
-                        d.setDate(now.getDate() - i)
-                        const key = d.toISOString().slice(0, 10)
-                        days.push({ key, label: d.toLocaleDateString('vi-VN', { month: '2-digit', day: '2-digit' }), amount: 0 })
-                    }
-
-                    for (const t of (tx || [])) {
-                        try {
-                            const created = t.created_at ? new Date(t.created_at) : null
-                            if (!created) continue
-                            const key = created.toISOString().slice(0, 10)
-                            const m = (t.reason || '').match(/amount_vnd=([0-9]+)/)
-                            if (m) {
-                                const amt = Number(m[1] || 0)
-                                const slot = days.find(d => d.key === key)
-                                if (slot && amt > 0) slot.amount += amt
-                            }
-                        } catch (e) { }
-                    }
-
-                    setRevenue7(days)
-                } catch (e) { setRevenue7([]) }
-            } catch (e) { }
-        }
-
-        load()
-        const onRefresh = () => load()
-        window.addEventListener('admin:refresh-stats', onRefresh)
-        return () => window.removeEventListener('admin:refresh-stats', onRefresh)
-    }, [])
-
-    return (
-        <div>
-            <div
-                style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    marginBottom: 24
-                }}
-            >
-                <h2>Bảng điều khiển</h2>
-            </div>
-
-            <div
-                style={{
-                    display: 'grid',
-                    gridTemplateColumns: 'repeat(auto-fit,minmax(180px,1fr))',
-                    gap: 20,
-                    marginBottom: 24
-                }}
-            >
-                <div className="stat-card">
-                    <div className="stat-icon">👥</div>
-                    <div>
-                        <div className="stat-title">Người dùng</div>
-                        <div className="stat-number">{counts.users}</div>
-                    </div>
-                </div>
-
-                <div className="stat-card">
-                    <div className="stat-icon">💰</div>
-                    <div>
-                        <div className="stat-title">Tổng doanh thu</div>
-                        <div className="stat-number">{(counts.total_revenue_vnd || 0).toLocaleString()}₫</div>
-                    </div>
-                </div>
-
-                <div className="stat-card">
-                    <div className="stat-icon">📦</div>
-                    <div>
-                        <div className="stat-title">Gói</div>
-                        <div className="stat-number">{counts.packages}</div>
-                    </div>
-                </div>
-
-                <div className="stat-card">
-                    <div className="stat-icon">💳</div>
-                    <div>
-                        <div className="stat-title">Giao dịch</div>
-                        <div className="stat-number">{counts.transactions}</div>
-                    </div>
-                </div>
-            </div>
-
-            <div
-                style={{
-                    display: 'grid',
-                    gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))',
-                    gap: 24
-                }}
-            >
-                <div className="card" style={{ height: '380px', display: 'flex', flexDirection: 'column' }}>
-                    <div
-                        style={{
-                            display: 'flex',
-                            justifyContent: 'space-between',
-                            alignItems: 'center',
-                            marginBottom: 16,
-                            flexShrink: 0
-                        }}
-                    >
-                        <h4 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700 }}>Người dùng mới</h4>
-                        <button
-                            className="btn-link"
-                            style={{ padding: '4px 8px', fontSize: '13px' }}
-                            onClick={() => setTab('Users')}
-                        >
-                            Xem tất cả
-                        </button>
-                    </div>
-
-                    <div className="users-scroll" style={{ flex: 1, overflowY: 'auto' }}>
-                        {recentUsers.length > 0 ? (
-                            recentUsers.map((u) => (
-                                <div
-                                    key={u.id}
-                                    className="user-row"
-                                    style={{
-                                        padding: '12px 8px',
-                                        display: 'flex',
-                                        justifyContent: 'space-between',
-                                        alignItems: 'center',
-                                        borderBottom: '1px solid #f1f5f9'
-                                    }}
-                                >
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', textAlign: 'left' }}>
-                                        <span style={{ fontWeight: 600, color: 'var(--text-main)' }}>
-                                            {u.username || 'Chưa cập nhật'}
-                                        </span>
-                                        <span style={{ fontSize: '12px', color: 'var(--text-soft)' }}>
-                                            {u.email || 'Không có email'}
-                                        </span>
-                                    </div>
-                                    <span className="user-badge" style={{ fontWeight: 600 }}>#{u.id}</span>
-                                </div>
-                            ))
-                        ) : (
-                            <div style={{ padding: '24px', color: 'var(--text-soft)', fontStyle: 'italic' }}>
-                                Không có người dùng mới nào
-                            </div>
-                        )}
-                    </div>
-                </div>
-
-                <div className="card dashboard-chart-card" style={{ height: '380px', display: 'flex', flexDirection: 'column' }}>
-                    <h4 style={{ marginTop: 0, marginBottom: 20, fontSize: '1.1rem', fontWeight: 700, textAlign: 'left' }}>
-                        Doanh thu 7 ngày
-                    </h4>
-
-                    {revenue7 && revenue7.length > 0 ? (
-                        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%' }}>
-                            <svg
-                                viewBox="0 0 700 260"
-                                className="revenue-chart"
-                                style={{ width: '100%', height: '100%', maxHeight: '240px', background: 'transparent' }}
-                            >
-                                {(() => {
-                                    const paddingLeft = 70
-                                    const paddingRight = 30
-                                    const paddingTopBottom = 35
-
-                                    const w = 700 - paddingLeft - paddingRight
-                                    const h = 260 - paddingTopBottom * 2
-
-                                    // Định nghĩa mốc trục Y cố định theo yêu cầu của bạn: 0, 2k, 5k, 10k
-                                    const yTicks = [0, 2000, 5000, 10000]
-                                    const maxAxis = 10000 // Mốc cao nhất của trục tọa độ
-
-                                    const bw = w / revenue7.length
-
-                                    return (
-                                        <g>
-                                            {/* 1. VẼ CÁC ĐƯỜNG LƯỚI NGANG (GRIDLINES) VÀ TRỤC TIỀN Y */}
-                                            {yTicks.map((tick, index) => {
-                                                const yPos = paddingTopBottom + (h - (tick / maxAxis) * h)
-                                                const labelText = tick >= 1000 ? `${tick / 1000}k` : `${tick}`
-
-                                                return (
-                                                    <g key={index}>
-                                                        {/* Đường lưới ngang mờ đứt nét */}
-                                                        <line
-                                                            x1={paddingLeft}
-                                                            y1={yPos}
-                                                            x2={700 - paddingRight}
-                                                            y2={yPos}
-                                                            stroke="#e2e8f0"
-                                                            strokeWidth="1"
-                                                            strokeDasharray="4 4"
-                                                        />
-                                                        {/* Chữ hiển thị mốc tiền bên trái trục Y */}
-                                                        <text
-                                                            x={paddingLeft - 12}
-                                                            y={yPos + 4}
-                                                            fontSize="11"
-                                                            fontWeight="600"
-                                                            fill="#64748b"
-                                                            textAnchor="end"
-                                                        >
-                                                            {labelText}
-                                                        </text>
-                                                    </g>
-                                                )
-                                            })}
-
-                                            {/* Đường trục dọc Y */}
-                                            <line
-                                                x1={paddingLeft}
-                                                y1={paddingTopBottom}
-                                                x2={paddingLeft}
-                                                y2={paddingTopBottom + h}
-                                                stroke="#cbd5e1"
-                                                strokeWidth="1.5"
-                                            />
-
-                                            {/* 2. VẼ CÁC CỘT DOANH THU VÀ TEXT NGÀY THÁNG */}
-                                            {revenue7.map((r, i) => {
-                                                const bx = paddingLeft + i * bw
-                                                // Giới hạn dữ liệu không vượt quá đỉnh 10k trên biểu đồ để tránh lỗi tràn SVG
-                                                const currentAmount = Math.min(r.amount, maxAxis)
-                                                const bh = Math.round((currentAmount / maxAxis) * h)
-                                                const by = paddingTopBottom + (h - bh)
-                                                const labelY = by - 8
-
-                                                return (
-                                                    <g key={r.key}>
-                                                        {/* Cột hiển thị dữ liệu - Bề ngang được thu nhỏ lại bằng cách tăng khoảng đệm (padding) */}
-                                                        <rect
-                                                            x={bx + 24} // Tăng từ 14 lên 24 để đẩy cột vào giữa sâu hơn
-                                                            y={by}
-                                                            width={bw - 48} // Giảm độ rộng của cột (bw - 48) giúp cột thon gọn hơn
-                                                            height={Math.max(bh, 2)}
-                                                            fill="var(--accent, #0f766e)"
-                                                            rx="4"
-                                                        />
-                                                        {/* Số tiền cụ thể hiển thị trên đầu cột */}
-                                                        {r.amount > 0 && (
-                                                            <text
-                                                                x={bx + bw / 2}
-                                                                y={labelY}
-                                                                fontSize="11"
-                                                                fontWeight="700"
-                                                                textAnchor="middle"
-                                                                fill="var(--text-main)"
-                                                            >
-                                                                {r.amount >= 1000 ? `${(r.amount / 1000).toFixed(0)}k` : r.amount}
-                                                            </text>
-                                                        )}
-                                                        {/* Label Ngày tháng dưới chân cột */}
-                                                        <text
-                                                            x={bx + bw / 2}
-                                                            y={paddingTopBottom + h + 20}
-                                                            fontSize="12"
-                                                            fontWeight="500"
-                                                            textAnchor="middle"
-                                                            fill="var(--text-soft)"
-                                                        >
-                                                            {r.label}
-                                                        </text>
-                                                    </g>
-                                                )
-                                            })}
-                                        </g>
-                                    )
-                                })()}
-                            </svg>
-                        </div>
-                    ) : (
-                        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-soft)' }}>
-                            Không có dữ liệu doanh thu
-                        </div>
-                    )}
-                </div>
-            </div>
-        </div>
-    )
-}
+import AdminSidebar from './components/admin/AdminSidebar'
+import AdminHeader from './components/admin/AdminHeader'
+import DashboardOverview from './components/admin/dashboard/DashboardOverview'
+import UserTable from './components/admin/users/UserTable'
+import UserDetails from './components/admin/users/UserDetails'
+import PackageTable from './components/admin/packages/PackageTable'
+import PackageForm from './components/admin/packages/PackageForm'
+import RevenueFilter from './components/admin/revenue/RevenueFilter'
+import RevenueSummary from './components/admin/revenue/RevenueSummary'
+import RevenueTable from './components/admin/revenue/RevenueTable'
+import ApiKeyCard from './components/admin/apiKeys/ApiKeyCard'
+import ApiKeyHistoryModal from './components/admin/apiKeys/ApiKeyHistoryModal'
+import './styles/admin.css'
+ 
 
 function UsersPanel() {
     const [users, setUsers] = useState([])
     useEffect(() => { async function l() { const u = await getUsers(); setUsers(u || []) } l() }, [])
     const [selectedUser, setSelectedUser] = useState(null)
     const [userRuns, setUserRuns] = useState([])
-    const [previewSrc, setPreviewSrc] = useState(null)
     const [userVideos, setUserVideos] = useState([])
     const [userPreviewUrl, setUserPreviewUrl] = useState(null)
     const [userPreviewBlobUrl, setUserPreviewBlobUrl] = useState(null)
@@ -561,6 +244,49 @@ function UsersPanel() {
         } catch (e) { alert('Lỗi tải: ' + (e.message || e)) }
     }
 
+    async function handleDownloadRun(run) {
+        const base = (import.meta.env.VITE_API_BASE || 'http://localhost:8000/api/v1').replace(/\/$/, '')
+        const url = `${base}/admin/users/${selectedUser.id}/runs/${run.run_id}/download`
+        const token = localStorage.getItem('auth_token')
+        const resp = await fetch(url, { headers: { Authorization: token ? `Bearer ${token}` : '' } })
+        if (!resp.ok) { alert('Không thể tải video: ' + resp.statusText); return }
+        const blob = await resp.blob()
+        const a = document.createElement('a')
+        const blobUrl = URL.createObjectURL(blob)
+        a.href = blobUrl
+        a.download = `${run.run_id}.mp4`
+        document.body.appendChild(a)
+        a.click()
+        a.remove()
+        URL.revokeObjectURL(blobUrl)
+    }
+
+    async function handlePreviewUserVideo(video) {
+        try {
+            await openPreviewVideo(
+                video.final_path || video.video_url || video.url || '',
+                setUserPreviewUrl,
+                userPreviewBlobUrl,
+                setUserPreviewBlobUrl
+            )
+        } catch (e) {
+            alert('Không thể preview video: ' + (e.message || e))
+        }
+    }
+
+    async function handleDownloadUserVideo(video) {
+        try {
+            await handleDownloadEventVideo({ url: video.final_path || video.video_url || video.url || '' }, { run_id: selectedRunDetail || 'video' })
+        } catch (e) {
+            alert('Không thể tải video: ' + (e.message || e))
+        }
+    }
+
+    async function handleLoadRunDetail(run) {
+        await loadRunVideos(selectedUser, run.run_id)
+        setSelectedRunDetail(run.run_id)
+    }
+
     async function handleRefund(run) {
         if (!confirm(`Hoàn tiền cho run ${run.run_id} ?`)) return
         try {
@@ -618,186 +344,82 @@ function UsersPanel() {
         <div>
             <h3>Người dùng</h3>
             <div>
-                <div style={{ width: '100%' }}>
-                    <table className="admin-table">
-                        <thead>
-                            <tr><th>ID</th><th>Tên đăng nhập</th><th>Email</th><th>Vai trò</th></tr>
-                        </thead>
-                        <tbody>
-                            {users.map((u) => (
-                                <tr key={u.id} style={{ cursor: 'pointer' }} onClick={() => loadUserRuns(u)}>
-                                    <td>{u.id}</td><td>{u.username}</td><td>{u.email}</td><td>{u.role}</td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
+                <UserTable users={users} onSelectUser={loadUserRuns} />
 
                 <div style={{ marginTop: '1.25rem' }}>
-                    {selectedUser ? (
-                        <div>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                <h4>Lịch sử chạy của {selectedUser.username} (#{selectedUser.id})</h4>
-                                <div>
-                                    <button style={{ marginLeft: 8 }} onClick={handleBan}>Khóa</button>
-                                    <button style={{ marginLeft: 8 }} onClick={handleUnban}>Mở khóa</button>
-                                    <button style={{ marginLeft: 8 }} onClick={handleResetPassword}>Đặt lại mật khẩu</button>
-                                </div>
-                            </div>
-                            {userDetails ? (
-                                <div style={{ marginBottom: 12, padding: 8, background: '#fafafa', borderRadius: 6 }}>
-                                    <div><strong>Credits:</strong> {userDetails.credits}</div>
-                                    <div><strong>Tổng video:</strong> {userDetails.total_videos}</div>
-                                    <div><strong>Credits đã mua:</strong> {userDetails.credits_bought}</div>
-                                    <div><strong>Credits đã dùng:</strong> {userDetails.credits_used}</div>
-                                    <div><strong>Đăng nhập gần nhất:</strong> {userDetails.last_login || 'N/A'}</div>
-                                </div>
-                            ) : null}
-                            <div style={{ marginBottom: 12, padding: 8, background: '#fff', borderRadius: 6, border: '1px solid #eee' }}>
-                                <h5>Quản lý Credits</h5>
-                                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                                    <input placeholder="Đặt credits (tổng)" value={creditsInput} onChange={(e) => setCreditsInput(e.target.value)} />
-                                    <button onClick={async () => {
-                                        const v = parseInt(creditsInput || '0')
-                                        if (isNaN(v)) return alert('Giá trị không hợp lệ')
-                                        try { await setUserCredits(selectedUser.id, v); alert('Đã đặt credits'); await loadUserDetails(selectedUser) } catch (e) { alert('Lỗi: ' + (e.message || e)) }
-                                    }}>Đặt</button>
-                                </div>
-                                <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 8 }}>
-                                    <input placeholder="Hiệu số (ví dụ: 30 hoặc -20)" value={deltaInput} onChange={(e) => setDeltaInput(e.target.value)} />
-                                    <button onClick={async () => {
-                                        const v = parseInt(deltaInput || '0')
-                                        if (isNaN(v)) return alert('Giá trị không hợp lệ')
-                                        try { await adjustUserCredits(selectedUser.id, v); alert('Đã cập nhật credits'); await loadUserDetails(selectedUser) } catch (e) { alert('Lỗi: ' + (e.message || e)) }
-                                    }}>Điều chỉnh</button>
-                                </div>
-                            </div>
+                    <UserDetails
+                        selectedUser={selectedUser}
+                        userDetails={userDetails}
+                        userVideos={userVideos}
+                        userRuns={userRuns}
+                        activities={activities}
+                        creditsInput={creditsInput}
+                        deltaInput={deltaInput}
+                        onCreditsInputChange={setCreditsInput}
+                        onDeltaInputChange={setDeltaInput}
+                        onSetCredits={async () => {
+                            const v = parseInt(creditsInput || '0')
+                            if (isNaN(v)) return alert('Giá trị không hợp lệ')
+                            try {
+                                await setUserCredits(selectedUser.id, v)
+                                alert('Đã đặt credits')
+                                await loadUserDetails(selectedUser)
+                            } catch (e) { alert('Lỗi: ' + (e.message || e)) }
+                        }}
+                        onAdjustCredits={async () => {
+                            const v = parseInt(deltaInput || '0')
+                            if (isNaN(v)) return alert('Giá trị không hợp lệ')
+                            try {
+                                await adjustUserCredits(selectedUser.id, v)
+                                alert('Đã cập nhật credits')
+                                await loadUserDetails(selectedUser)
+                            } catch (e) { alert('Lỗi: ' + (e.message || e)) }
+                        }}
+                        onPreviewVideo={async (video) => {
+                            if (!video) return
+                            if (video.id) {
+                                try {
+                                    const details = await getVideo(video.id)
+                                    await listVideoScenes(video.id)
+                                    await handlePreviewUserVideo(details)
+                                } catch (e) { setUserPreviewUrl(null) }
+                            } else {
+                                await handlePreviewUserVideo(video)
+                            }
+                        }}
+                        onDownloadVideo={async (video) => {
+                            if (!video) return
+                            await handleDownloadUserVideo(video)
+                        }}
+                        onPreviewRun={handlePreview}
+                        onDownloadRun={handleDownloadRun}
+                        onRefundRun={handleRefund}
+                        onDeleteRun={handleDelete}
+                        onLoadRunVideos={handleLoadRunDetail}
+                        onBan={handleBan}
+                        onUnban={handleUnban}
+                        onResetPassword={handleResetPassword}
+                    />
 
-                            <div style={{ marginTop: 12 }}>
-                                <h4>Lịch sử hoạt động</h4>
-                                {userVideos && userVideos.length > 0 ? (
-                                    <table className="admin-table">
-                                        <thead>
-                                            <tr><th>ID</th><th>Tiêu đề</th><th>Trạng thái</th><th>Hành động</th></tr>
-                                        </thead>
-                                        <tbody>
-                                            {(userVideos || []).map(v => (
-                                                <tr key={v.id}>
-                                                    <td>{v.id}</td>
-                                                    <td style={{ cursor: 'pointer' }} onClick={async () => {
-                                                        try {
-                                                            const details = await getVideo(v.id)
-                                                            await listVideoScenes(v.id)
-                                                            setPreviewSrc(null)
-                                                            await openPreviewVideo(details.final_path || v.final_path || '', setUserPreviewUrl, userPreviewBlobUrl, setUserPreviewBlobUrl)
-                                                        } catch (e) { setUserPreviewUrl(null) }
-                                                    }}>{v.title}</td>
-                                                    <td>{v.status}</td>
-                                                    <td>
-                                                        <button onClick={async () => {
-                                                            try {
-                                                                await openPreviewVideo(v.final_path || '', setUserPreviewUrl, userPreviewBlobUrl, setUserPreviewBlobUrl)
-                                                            } catch (e) {
-                                                                alert('Không thể preview video: ' + (e.message || e))
-                                                            }
-                                                        }}>Preview</button>
-                                                    </td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
-                                ) : (
-                                    <div style={{ padding: 12, color: '#666' }}>Không có video.</div>
-                                )}
-
-                                {userPreviewUrl ? (
-                                    <div className="admin-video-preview" style={{ marginTop: 12 }}>
-                                        <h5>Preview Video</h5>
-                                        <video src={userPreviewUrl} controls style={{ maxWidth: '100%' }} />
-                                        <br />
-                                        <button
-                                            style={{ marginTop: 12 }}
-                                            onClick={() => {
-                                                try {
-                                                    if (userPreviewBlobUrl) URL.revokeObjectURL(userPreviewBlobUrl)
-                                                } catch (e) { }
-                                                setUserPreviewBlobUrl(null)
-                                                setUserPreviewUrl(null)
-                                            }}
-                                        >
-                                            Đóng
-                                        </button>
-                                    </div>
-                                ) : null}
-                            </div>
-
-                            <div style={{ marginTop: 20 }}>
-                                <h4>Lịch sử hiển thị các Runs</h4>
-                                <table className="admin-table">
-                                    <thead>
-                                        <tr><th>Run ID</th><th>Ngày</th><th>Số sự kiện</th><th>Hành động</th></tr>
-                                    </thead>
-                                    <tbody>
-                                        {userRuns.map(r => (
-                                            <tr key={r.run_id}>
-                                                <td>{r.run_id}</td><td>{r.date}</td><td>{r.event_count}</td>
-                                                <td>
-                                                    <div className="run-actions">
-                                                        <button onClick={() => handlePreview(r)} disabled={!r.has_video}>{r.has_video ? 'Xem video' : 'Không có video'}</button>
-                                                        <button style={{ marginLeft: 8 }} onClick={async () => {
-                                                            const base = (import.meta.env.VITE_API_BASE || 'http://localhost:8000/api/v1').replace(/\/$/, '')
-                                                            const url = `${base}/admin/users/${selectedUser.id}/runs/${r.run_id}/download`
-                                                            const token = localStorage.getItem('auth_token')
-                                                            try {
-                                                                const resp = await fetch(url, { headers: { Authorization: token ? `Bearer ${token}` : '' } })
-                                                                if (!resp.ok) { alert('Không thể tải video: ' + resp.statusText); return }
-                                                                const blob = await resp.blob()
-                                                                const a = document.createElement('a')
-                                                                const blobUrl = URL.createObjectURL(blob)
-                                                                a.href = blobUrl
-                                                                a.download = `${r.run_id}.mp4`
-                                                                document.body.appendChild(a)
-                                                                a.click()
-                                                                a.remove()
-                                                                URL.revokeObjectURL(blobUrl)
-                                                            } catch (e) { alert('Lỗi tải: ' + (e.message || e)) }
-                                                        }}>Tải xuống</button>
-                                                        <button style={{ marginLeft: 8 }} onClick={() => handleRefund(r)} disabled={r.refunded}>{r.refunded ? 'Đã hoàn tiền' : 'Hoàn tiền'}</button>
-                                                        <button style={{ marginLeft: 8 }} onClick={() => handleDelete(r)}>Xóa</button>
-                                                        <button
-                                                            style={{ marginLeft: 8 }}
-                                                            onClick={async () => {
-                                                                await loadRunVideos(selectedUser, r.run_id)
-                                                                setSelectedRunDetail(r.run_id)
-                                                            }}
-                                                        >
-                                                            Chi tiết
-                                                        </button>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
-
-                            {activities && activities.length > 0 ? (
-                                <div style={{ marginTop: 12 }}>
-                                    <h4>Hoạt động gần đây</h4>
-                                    <table className="admin-table">
-                                        <thead>
-                                            <tr><th>ID</th><th>Hành động</th><th>Chi tiết</th><th>IP</th><th>Thời gian</th></tr>
-                                        </thead>
-                                        <tbody>
-                                            {activities.map(a => (
-                                                <tr key={a.id}><td>{a.id}</td><td>{a.action}</td><td style={{ whiteSpace: 'pre-wrap' }}>{a.detail}</td><td>{a.ip_address}</td><td>{a.created_at}</td></tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
-                                </div>
-                            ) : null}
+                    {userPreviewUrl ? (
+                        <div className="admin-video-preview" style={{ marginTop: 12 }}>
+                            <h5>Preview Video</h5>
+                            <video src={userPreviewUrl} controls style={{ maxWidth: '100%' }} />
+                            <br />
+                            <button
+                                style={{ marginTop: 12 }}
+                                onClick={() => {
+                                    try {
+                                        if (userPreviewBlobUrl) URL.revokeObjectURL(userPreviewBlobUrl)
+                                    } catch (e) { }
+                                    setUserPreviewBlobUrl(null)
+                                    setUserPreviewUrl(null)
+                                }}
+                            >
+                                Đóng
+                            </button>
                         </div>
-                    ) : <div><em>Nhấn vào người dùng để xem các runs</em></div>}
+                    ) : null}
                 </div>
             </div>
 
@@ -983,187 +605,62 @@ function PackagesPanel() {
         <div>
             <h3 style={{ marginBottom: 20, fontSize: '1.25rem', fontWeight: 700, textAlign: 'left' }}>Quản lý Gói</h3>
 
-            <div style={{ display: 'flex', gap: '24px', flexWrap: 'wrap', alignItems: 'flex-start' }}>
+            <div className="packages-panel">
+                <PackageTable packages={packages} onEdit={edit} onRemove={remove} />
 
-                <div className="card" style={{ flex: 1, minWidth: '400px', overflowX: 'auto' }}>
-                    <table
-                        className="admin-table"
-                        style={{
-                            width: '100%',
-                            tableLayout: 'auto',
-                            borderCollapse: 'collapse'
-                        }}
-                    >
-                        <thead>
-                            <tr>
-                                <th style={{ width: '50px', padding: '12px 8px' }}>ID</th>
-                                <th style={{ padding: '12px 8px' }}>Tên gói</th>
-                                <th style={{ padding: '12px 8px' }}>Credits</th>
-                                <th style={{ padding: '12px 8px' }}>Giá (VND)</th>
-                                <th style={{ padding: '12px 8px', width: '130px', textAlign: 'center' }}>Hành động</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {packages.map(p => (
-                                <tr key={p.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                                    <td style={{ padding: '12px 8px', overflow: 'visible', textOverflow: 'clip' }}>{p.id}</td>
-                                    <td style={{ padding: '12px 8px', fontWeight: 600, overflow: 'visible', textOverflow: 'clip' }}>{p.name}</td>
-                                    <td style={{ padding: '12px 8px', overflow: 'visible', textOverflow: 'clip' }}>{p.credits}</td>
-                                    <td style={{ padding: '12px 8px', overflow: 'visible', textOverflow: 'clip', whiteSpace: 'nowrap' }}>
-                                        {Math.round((p.price_cents || 0) / 100).toLocaleString()}₫
-                                    </td>
-                                    <td style={{ padding: '12px 8px', textAlign: 'center', overflow: 'visible' }}>
-                                        <div style={{ display: 'flex', gap: '6px', justifyContent: 'center' }}>
-                                            <button
-                                                onClick={() => edit(p)}
-                                                style={{ padding: '4px 10px', fontSize: '13px', borderRadius: '8px' }}
-                                            >
-                                                Sửa
-                                            </button>
-                                            <button
-                                                onClick={() => remove(p.id)}
-                                                className="danger"
-                                                style={{ padding: '4px 10px', fontSize: '13px', borderRadius: '8px' }}
-                                            >
-                                                Xóa
-                                            </button>
-                                        </div>
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
-
-                <div className="card" style={{ width: '360px', flexShrink: 0 }}>
-                    <h4 style={{ marginTop: 0, marginBottom: 16, fontWeight: 700, textAlign: 'left' }}>
-                        {selected ? 'Sửa gói' : 'Tạo gói mới'}
-                    </h4>
-
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                        <label style={{ textAlign: 'left', fontWeight: 500 }}>
-                            Tên gói
-                            <input
-                                placeholder="Nhập tên gói (VD: Premium, VIP...)"
-                                value={form.name}
-                                onChange={(e) => setForm({ ...form, name: e.target.value })}
-                                style={{ width: '100%', marginTop: '4px' }}
-                            />
-                        </label>
-
-                        <label style={{ textAlign: 'left', fontWeight: 500 }}>
-                            Số credit
-                            <input
-                                placeholder="Nhập số lượng credits"
-                                type="number"
-                                value={form.credits || ''}
-                                onChange={(e) => setForm({ ...form, credits: Number(e.target.value) })}
-                                style={{ width: '100%', marginTop: '4px' }}
-                            />
-                        </label>
-
-                        <label style={{ textAlign: 'left', fontWeight: 500 }}>
-                            Giá tiền (VND)
-                            <input
-                                placeholder="Nhập giá tiền VND"
-                                type="number"
-                                value={form.price_vnd || ''}
-                                onChange={(e) => setForm({ ...form, price_vnd: Number(e.target.value) })}
-                                style={{ width: '100%', marginTop: '4px' }}
-                            />
-                        </label>
-
-                        <div style={{ display: 'flex', gap: '10px', marginTop: '8px' }}>
-                            <button
-                                onClick={save}
-                                style={{
-                                    flex: 1,
-                                    backgroundColor: 'var(--accent)',
-                                    color: '#fff',
-                                    borderColor: 'var(--accent)'
-                                }}
-                            >
-                                {selected ? 'Lưu thay đổi' : 'Tạo gói'}
-                            </button>
-                            {selected && (
-                                <button
-                                    style={{ flex: 1 }}
-                                    onClick={() => { setSelected(null); setForm({ name: '', credits: 0, price_vnd: 0 }) }}
-                                >
-                                    Hủy
-                                </button>
-                            )}
-                        </div>
-                    </div>
-                </div>
-
+                <PackageForm
+                    form={form}
+                    onChange={(next) => setForm(next)}
+                    onSave={save}
+                    onCancel={() => { setSelected(null); setForm({ name: '', credits: 0, price_vnd: 0 }) }}
+                    isEditing={!!selected}
+                />
             </div>
         </div>
     )
 }
 
 function RevenueReport() {
-    const [fromDate, setFromDate] = useState('')
-    const [toDate, setToDate] = useState('')
+    const today = new Date()
+    const currentMonthStart = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().slice(0, 10)
+    const currentDay = today.toISOString().slice(0, 10)
+
+    const [fromDate, setFromDate] = useState(currentMonthStart)
+    const [toDate, setToDate] = useState(currentDay)
     const [tx, setTx] = useState([])
     const [users, setUsers] = useState([]) // State lưu thông tin User để map username
     const [loading, setLoading] = useState(false)
     const [summary, setSummary] = useState({ total_vnd: 0, count: 0 })
+    const [monthRevenue, setMonthRevenue] = useState(0)
     const [byDay, setByDay] = useState([])
     const [selectedDateDetails, setSelectedDateDetails] = useState(null) // State theo dõi ngày đang được chọn xem chi tiết
     const [detailedTxList, setDetailedTxList] = useState([]) // Danh sách transaction của ngày được chọn
 
-    useEffect(() => {
-        async function load() {
-            setLoading(true)
-            try {
-                const allTx = await listTransactions(2000, 0) // Lấy danh sách giao dịch lớn hơn để tổng hợp báo cáo đầy đủ
-                const allUsers = await getUsers()
-                setTx(allTx || [])
-                setUsers(allUsers || [])
-            } catch (e) {
-                setTx([])
-            } finally {
-                setLoading(false)
-            }
-        }
-        load()
-    }, [])
-
-    function parseAmount(t) {
-        try {
-            const m = (t.reason || '').match(/amount_vnd=([0-9]+)/)
-            if (m) return Number(m[1] || 0)
-        } catch (e) { }
-        return 0
-    }
-
-    function applyFilter() {
-        const from = fromDate ? new Date(fromDate) : null
-        const to = toDate ? new Date(toDate) : null
+    async function filterTransactions(from, to, transactions) {
+        const fromValue = from || fromDate
+        const toValue = to || toDate
+        const fromDateObj = fromValue ? new Date(fromValue) : null
+        const toDateObj = toValue ? new Date(toValue) : null
         const map = {}
         let total = 0
         let count = 0
 
-        // Reset trạng thái chi tiết khi thực hiện lọc mới
         setSelectedDateDetails(null)
         setDetailedTxList([])
 
-        for (const t of (tx || [])) {
+        for (const t of (transactions || tx || [])) {
             try {
                 const created = t.created_at ? new Date(t.created_at) : null
                 if (!created) continue
-                if (from && created < from) continue
-                if (to) {
-                    const toEnd = new Date(to)
+                if (fromDateObj && created < fromDateObj) continue
+                if (toDateObj) {
+                    const toEnd = new Date(toDateObj)
                     toEnd.setHours(23, 59, 59, 999)
                     if (created > toEnd) continue
                 }
 
                 const key = created.toISOString().slice(0, 10)
                 const amt = parseAmount(t)
-
-                // Chỉ tính những giao dịch sinh ra doanh thu thực tế (> 0đ)
                 if (amt > 0) {
                     if (!map[key]) map[key] = { date: key, amount: 0, count: 0 }
                     map[key].amount += amt
@@ -1177,6 +674,61 @@ function RevenueReport() {
         const rows = Object.values(map).sort((a, b) => b.date.localeCompare(a.date))
         setByDay(rows)
         setSummary({ total_vnd: total, count })
+    }
+
+    function resetToCurrentMonth(transactions) {
+        const today2 = new Date()
+        const monthStart = new Date(today2.getFullYear(), today2.getMonth(), 1).toISOString().slice(0, 10)
+        const dayNow = today2.toISOString().slice(0, 10)
+        setFromDate(monthStart)
+        setToDate(dayNow)
+        filterTransactions(monthStart, dayNow, transactions)
+    }
+
+    useEffect(() => {
+        async function load() {
+            setLoading(true)
+            try {
+                const allTx = await listTransactions(2000, 0) // Lấy danh sách giao dịch lớn hơn để tổng hợp báo cáo đầy đủ
+                const allUsers = await getUsers()
+                const transactions = allTx || []
+                setTx(transactions)
+                setUsers(allUsers || [])
+
+                const currentMonthStart = new Date(today.getFullYear(), today.getMonth(), 1)
+                const currentMonthEnd = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59, 999)
+                const monthTotal = (transactions || []).reduce((sum, t) => {
+                    try {
+                        const created = t.created_at ? new Date(t.created_at) : null
+                        if (!created) return sum
+                        if (created < currentMonthStart || created > currentMonthEnd) return sum
+                        return sum + parseAmount(t)
+                    } catch (error) {
+                        return sum
+                    }
+                }, 0)
+                setMonthRevenue(monthTotal)
+
+                resetToCurrentMonth(transactions)
+            } catch (e) {
+                setTx([])
+            } finally {
+                setLoading(false)
+            }
+        }
+        load()
+    }, [])
+
+    function applyFilter() {
+        filterTransactions(fromDate, toDate, tx)
+    }
+
+    function parseAmount(t) {
+        try {
+            const m = (t.reason || '').match(/amount_vnd=([0-9]+)/)
+            if (m) return Number(m[1] || 0)
+        } catch (e) { }
+        return 0
     }
 
     // Hàm xử lý khi nhấn vào dòng của một Ngày để xem danh sách giao dịch chi tiết cụ thể
@@ -1246,7 +798,7 @@ function RevenueReport() {
                         {loading ? 'Đang tải...' : 'Lọc kết quả'}
                     </button>
                     <button
-                        onClick={() => { setFromDate(''); setToDate(''); setByDay([]); setSummary({ total_vnd: 0, count: 0 }); setSelectedDateDetails(null); setDetailedTxList([]) }}
+                        onClick={() => resetToCurrentMonth(tx)}
                         style={{ padding: '9px 20px' }}
                     >
                         Xóa bộ lọc
@@ -1256,73 +808,12 @@ function RevenueReport() {
 
             {/* Khối hiển thị Tổng quan số liệu */}
             <div style={{ display: 'flex', gap: '20px', marginBottom: 24, flexWrap: 'wrap' }}>
-                <div className="stat-card" style={{ flex: 1, minWidth: '240px' }}>
-                    <div className="stat-icon" style={{ backgroundColor: 'var(--accent-soft)', color: 'var(--accent)' }}>💰</div>
-                    <div style={{ textAlign: 'left' }}>
-                        <div className="stat-title">Doanh thu thu về</div>
-                        <div className="stat-number" style={{ color: 'var(--accent)' }}>
-                            {(summary.total_vnd || 0).toLocaleString()}₫
-                        </div>
-                    </div>
-                </div>
-                <div className="stat-card" style={{ flex: 1, minWidth: '240px' }}>
-                    <div className="stat-icon" style={{ backgroundColor: '#eff6ff', color: '#1d4ed8' }}>🧾</div>
-                    <div style={{ textAlign: 'left' }}>
-                        <div className="stat-title">Tổng số lượt mua gói</div>
-                        <div className="stat-number" style={{ color: '#1d4ed8' }}>
-                            {summary.count} Giao dịch
-                        </div>
-                    </div>
-                </div>
+                <RevenueSummary summary={summary} monthRevenue={monthRevenue} />
             </div>
+
             <div style={{ display: 'flex', gap: '24px', flexWrap: 'wrap', alignItems: 'flex-start' }}>
+                <RevenueTable byDay={byDay} selectedDateDetails={selectedDateDetails} onSelectDate={handleShowDateDetails} />
 
-                {/* Bảng Doanh thu theo Ngày */}
-                <div className="card" style={{ flex: 1, minWidth: '350px', overflowX: 'auto', background: '#fff' }}>
-                    <h4 style={{ margin: '0 0 16px 0', fontSize: '1rem', fontWeight: 700, textAlign: 'left' }}>
-                        Thống kê theo ngày (Chọn ngày để xem chi tiết)
-                    </h4>
-                    {byDay.length > 0 ? (
-                        <table className="admin-table" style={{ width: '100%', tableLayout: 'auto', borderCollapse: 'collapse' }}>
-                            <thead>
-                                <tr style={{ borderBottom: '2px solid var(--line)' }}>
-                                    <th style={{ padding: '12px' }}>Ngày nhận tiền</th>
-                                    <th style={{ padding: '12px', textAlign: 'center' }}>Số lượt mua</th>
-                                    <th style={{ padding: '12px', textAlign: 'right' }}>Doanh thu</th>
-                                    <th style={{ padding: '12px', width: '80px' }}></th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {byDay.map(r => (
-                                    <tr
-                                        key={r.date}
-                                        style={{
-                                            borderBottom: '1px solid #f1f5f9',
-                                            cursor: 'pointer',
-                                            backgroundColor: selectedDateDetails === r.date ? 'var(--accent-soft)' : 'transparent'
-                                        }}
-                                        onClick={() => handleShowDateDetails(r.date)}
-                                    >
-                                        <td style={{ padding: '12px', fontWeight: 500 }}>{r.date}</td>
-                                        <td style={{ padding: '12px', textAlign: 'center' }}>{r.count}</td>
-                                        <td style={{ padding: '12px', textAlign: 'right', fontWeight: 700 }}>
-                                            {r.amount.toLocaleString()}₫
-                                        </td>
-                                        <td style={{ padding: '12px', textAlign: 'center', color: 'var(--accent)', fontWeight: 600, fontSize: '12px' }}>
-                                            {selectedDateDetails === r.date ? 'Đang xem' : 'Xem ➔'}
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    ) : (
-                        <div style={{ padding: '30px 10px', color: 'var(--text-soft)', fontStyle: 'italic' }}>
-                            Chưa có dữ liệu. Vui lòng bấm "Lọc kết quả".
-                        </div>
-                    )}
-                </div>
-
-                {/* Khối hiển thị chi tiết: Ai chuyển, Lúc nào, Gói gì */}
                 {selectedDateDetails && (
                     <div className="card" style={{ flex: 1.2, minWidth: '450px', background: '#fff' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
@@ -1381,31 +872,248 @@ function RevenueReport() {
 }
 
 export default function AdminPanel() {
-    const [tab, setTab] = useState('Dashboard')
-    return (
-        <div
-            className="admin-root"
-            style={{
-                display: 'flex',
-                width: '100%',
-                minHeight: '100vh'
-            }}
-        >
-            <Sidebar tab={tab} setTab={setTab} />
+    const [tab, setTab] = useState('Dashboard');
+    const [dashboardCounts, setDashboardCounts] = useState({})
+    const [monthlyRevenue, setMonthlyRevenue] = useState([])
+    const [recentUsers, setRecentUsers] = useState([])
 
+    useEffect(() => {
+        let mounted = true
+        ;(async () => {
+            try {
+                const stats = await getDashboardStats()
+                if (!mounted) return
+                const rawCounts = stats.counts || stats || {}
+                const counts = {
+                    users: rawCounts.users_created_this_month ?? rawCounts.users ?? rawCounts.total_users ?? 0,
+                    packages: rawCounts.packages ?? rawCounts.total_packages ?? 0,
+                    transactions: rawCounts.transactions ?? rawCounts.total_transactions ?? 0,
+                    total_revenue_vnd: rawCounts.total_revenue_vnd ?? rawCounts.total_revenue ?? 0,
+                    videos_created_total: rawCounts.videos_created_total ?? rawCounts.total_videos ?? 0,
+                    videos_created_this_month: rawCounts.videos_created_this_month ?? 0,
+                }
+                setDashboardCounts(counts)
+                setMonthlyRevenue(stats.revenue_by_month || stats.revenue7 || [])
+                setRecentUsers(stats.recent_users || [])
+            } catch (e) {
+                // ignore
+            }
+        })()
+        return () => { mounted = false }
+    }, [])
+
+    return (
+        <div className="admin-root admin-shell">
+            <aside className="admin-sidebar-wrapper">
+                <AdminSidebar tab={tab} setTab={setTab} />
+            </aside>
+
+            <div className="admin-main">
+                <AdminHeader onLogout={() => { localStorage.clear(); window.location.reload(); }} />
+
+                <main className="admin-content">
+                    {tab === 'Dashboard' && <DashboardOverview counts={dashboardCounts} monthlyRevenue={monthlyRevenue} recentUsers={recentUsers} />}
+                    {tab === 'Users' && <UsersPanel />}
+                    {tab === 'Packages' && <PackagesPanel />}
+                    {tab === 'Revenue' && <RevenueReport />}
+                    {tab === 'Integrations' && <IntegrationsPanel />}
+                </main>
+            </div>
+        </div>
+    );
+}
+
+function IntegrationsPanel() {
+    const [settings, setSettingsState] = useState([])
+    const [loading, setLoading] = useState(false)
+    const [edits, setEdits] = useState({})
+    const [logs, setLogs] = useState([])
+    const [logLoading, setLogLoading] = useState(false)
+    const [revealed, setRevealed] = useState({})
+
+    // Thêm state để quản lý Key nào đang được mở popup lịch sử thay đổi
+    const [activeLogKey, setActiveLogKey] = useState(null)
+
+    useEffect(() => {
+        async function load() {
+            setLoading(true)
+            try {
+                const s = await listSettings()
+                setSettingsState(s || [])
+                try {
+                    setLogLoading(true)
+                    const l = await getAdminLogs(500, 0) // Tăng limit để lấy nhiều log hơn phục vụ việc filter theo key
+                    setLogs(l || [])
+                } catch (e) {
+                    setLogs([])
+                } finally {
+                    setLogLoading(false)
+                }
+            } catch (e) {
+                setSettingsState([])
+            } finally {
+                setLoading(false)
+            }
+        }
+        load()
+    }, [])
+
+    function onEdit(key, field, value) {
+        setEdits(prev => ({ ...prev, [key]: { ...(prev[key] || {}), [field]: value } }))
+    }
+
+    async function onSave(key) {
+        const orig = settings.find(s => s.key === key) || {}
+        // Nếu người dùng chưa tự gõ mô tả mới, lấy luôn mô tả hệ thống tự động để lưu vào DB
+        const finalDescription = edits[key] && edits[key].description !== undefined
+            ? edits[key].description
+            : getSystemDescription(key, orig.description);
+
+        const payload = {
+            key,
+            value: edits[key] && edits[key].value !== undefined ? edits[key].value : (orig.value || ''),
+            description: finalDescription,
+        }
+        try {
+            await setSetting(payload)
+            const s = await listSettings()
+            setSettingsState(s || [])
+            // Tải lại admin logs để cập nhật lịch sử mới nhất
+            const l = await getAdminLogs(500, 0)
+            setLogs(l || [])
+            setEdits(prev => { const copy = { ...prev }; delete copy[key]; return copy })
+            alert('Đã cập nhật key vào hệ thống.');
+        } catch (e) {
+            alert('Lưu thất bại: ' + (e.message || e))
+        }
+    }
+
+    function maskValue(v) {
+        if (v === null || v === undefined) return ''
+        const s = String(v)
+        if (s.length <= 8) return '****' + s.slice(-4)
+        return '****' + s.slice(-8)
+    }
+
+    function toggleReveal(id) {
+        setRevealed(prev => ({ ...prev, [id]: !prev[id] }))
+    }
+
+    // Hàm tiện ích hỗ trợ bóc tách tên Key từ dữ liệu JSON String của Log
+    function getKeyNameFromLog(l) {
+        try {
+            if (l.details && typeof l.details === 'object') {
+                return l.details.setting_key || l.details.key || '';
+            }
+            if (l.details && typeof l.details === 'string') {
+                const parsed = JSON.parse(l.details);
+                return parsed.setting_key || parsed.key || '';
+            }
+        } catch (e) {
+            const match = String(l.details || '').match(/"(?:setting_key|key)"\s*:\s*"([^"]+)"/);
+            if (match) return match[1];
+        }
+        return '';
+    }
+
+    // Hàm tự động trả về mô tả chuẩn tiếng Việt theo từng loại từ khóa cấu hình hệ thống
+    function getSystemDescription(key, customDesc) {
+        // Nếu trong DB đã có mô tả tùy chỉnh do bạn tự gõ trước đó và không chứa text mặc định của môi trường, giữ nguyên nó
+        if (customDesc && customDesc.trim() !== '' && !customDesc.includes('From environment')) {
+            return customDesc;
+        }
+
+        const upperKey = String(key).toUpperCase();
+        if (upperKey.includes('SEPAY')) {
+            return 'API Key SePay dùng để xác nhận thanh toán và tự động cộng Credits cho người dùng.';
+        }
+
+        if (
+            upperKey.includes('KLING_ACCESS_KEY') ||
+            upperKey.includes('KLING_SECRET_KEY') ||
+            upperKey.includes('KLING')
+        ) {
+            return 'API Key kết nối Kling AI để tạo và render video từ kịch bản quảng cáo.';
+        }
+
+        if (
+            upperKey.includes('OPENAI_API_KEY') ||
+            upperKey.includes('OPENAI') ||
+            upperKey.includes('GPT')
+        ) {
+            return 'API Key OpenAI dùng để tạo kịch bản, prompt và xử lý nội dung AI.';
+        }
+
+        if (
+            upperKey.includes('VITE_API_BASE') ||
+            upperKey.includes('API_URL') ||
+            upperKey.includes('BASE_URL')
+        ) {
+            return 'Địa chỉ API kết nối giữa giao diện người dùng và máy chủ hệ thống.';
+        }
+
+        if (
+            upperKey.includes('STORAGE') ||
+            upperKey.includes('PATH') ||
+            upperKey.includes('RENDER')
+        ) {
+            return 'Cấu hình đường dẫn lưu trữ video, dữ liệu và tệp hệ thống.';
+        }
+        return 'Mã cấu hình tích hợp tiện ích hệ thống. Cung cấp thông số biến môi trường môi trường vận hành nội bộ phục vụ cho các tiến trình đồng bộ dữ liệu quản trị viên và người dùng.';
+    }
+
+    return (
+        <div>
             <div
-                className="admin-content"
                 style={{
-                    flex: 1,
-                    padding: '24px',
-                    overflow: 'auto'
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    marginBottom: 24
                 }}
             >
-                {tab === 'Dashboard' && <Dashboard setTab={setTab} />}
-                {tab === 'Users' && <UsersPanel />}
-                {tab === 'Packages' && <PackagesPanel />}
-                {tab === 'Revenue' && <RevenueReport />}
+                <div>
+                    <h2 style={{ margin: 0 }}>Tích hợp & API Keys</h2>
+                    <p style={{ margin: '6px 0 0', color: 'var(--text-soft)' }}>
+                        Quản lý các API Key và cấu hình hệ thống
+                    </p>
+                </div>
             </div>
+
+            {loading ? (
+                <div className="card">Đang tải...</div>
+            ) : (
+                <div
+                    style={{
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(auto-fit,minmax(500px,1fr))',
+                        gap: 20
+                    }}
+                >
+                    {(settings || []).map((s) => {
+                        const key = s.key
+                        const edited = edits[key] || {}
+                        return (
+                            <ApiKeyCard
+                                key={key}
+                                keyObj={s}
+                                edited={edited}
+                                onEdit={onEdit}
+                                onOpenHistory={(k) => setActiveLogKey(k)}
+                                onSave={(k) => onSave(k)}
+                            />
+                        )
+                    })}
+                </div>
+            )}
+
+            <ApiKeyHistoryModal
+                activeLogKey={activeLogKey}
+                logs={logs}
+                revealedMap={revealed}
+                onClose={() => setActiveLogKey(null)}
+                onToggleReveal={(id) => toggleReveal(id)}
+            />
         </div>
     )
 }

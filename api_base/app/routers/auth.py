@@ -7,14 +7,13 @@ from pydantic import BaseModel, EmailStr
 
 from app.config import settings
 from app.models.user_store import (
-    create_email_user,
     find_user_by_username_or_email,
     find_or_create_google_user,
-    resend_verification_email,
-    verify_user_email,
+    get_user_by_id,
+    update_user,
+    adjust_user_credits,
 )
 from app.security.auth import create_access_token, verify_password, get_current_user
-from app.models.user_store import get_user_by_id, adjust_user_credits
 from app.models.login_store import create_login_log
 from app.models.payment_store import create_payment, encode_payment_id
 
@@ -27,17 +26,9 @@ class LoginIn(BaseModel):
     password: str
 
 
-class RegisterIn(BaseModel):
-    email: EmailStr
-    password: str
-
-
-class ResendVerificationIn(BaseModel):
-    email: EmailStr
-
-
-class VerifyEmailIn(BaseModel):
-    token: str
+class ChangePasswordIn(BaseModel):
+    current_password: str | None = None
+    new_password: str
 
 
 def _build_token_payload(user: dict) -> dict:
@@ -77,13 +68,6 @@ async def login_for_token(data: LoginIn, request: Request):
             pass
         raise HTTPException(status_code=400, detail='Sai tài khoản hoặc mật khẩu')
 
-    if user.get('email') and not user.get('email_verified', False):
-        try:
-            create_login_log(user.get('id'), ip, ua, None, False)
-        except Exception:
-            pass
-        raise HTTPException(status_code=403, detail='Email chưa được xác thực. Vui lòng kiểm tra Gmail hoặc gửi lại mail xác thực.')
-
     if not verify_password(data.password, user.get('hashed_password')):
         try:
             create_login_log(user.get('id'), ip, ua, None, False)
@@ -99,52 +83,28 @@ async def login_for_token(data: LoginIn, request: Request):
     return {'access_token': token, 'token_type': 'bearer'}
 
 
-@router.post('/register')
-async def register_with_email(data: RegisterIn):
-    email = data.email.strip().lower()
-    if not email.endswith('@gmail.com') and not email.endswith('@googlemail.com'):
-        raise HTTPException(status_code=400, detail='Chỉ hỗ trợ đăng ký bằng tài khoản Gmail')
-
+@router.post('/change-password')
+async def change_password(data: ChangePasswordIn, payload=Depends(get_current_user)):
     try:
-        result = create_email_user(email=email, password=data.password)
-    except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
+        user_id = int(payload.get('sub'))
+    except Exception:
+        raise HTTPException(status_code=400, detail='Không lấy được thông tin user')
 
-    if result.get('verification_sent'):
-        message = 'Đã gửi mail xác thực đến Gmail của bạn.'
-    else:
-        message = 'Tài khoản đã tạo. Mail xác thực chưa gửi được, hãy kiểm tra cấu hình SMTP.'
+    user = get_user_by_id(user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail='Không tìm thấy người dùng')
 
-    return {
-        'message': message,
-        'email': email,
-        'verification_required': True,
-        'verification_sent': result.get('verification_sent', False),
-        'verification_url': result.get('verification_url'),
-    }
+    new_password = (data.new_password or '').strip()
+    if len(new_password) < 6:
+        raise HTTPException(status_code=400, detail='Mật khẩu mới phải có ít nhất 6 ký tự')
 
+    current_password = (data.current_password or '').strip()
+    if user.get('auth_provider') != 'google':
+        if not current_password or not verify_password(current_password, user.get('hashed_password') or ''):
+            raise HTTPException(status_code=400, detail='Mật khẩu hiện tại không đúng')
 
-@router.post('/resend-verification')
-async def resend_verification(data: ResendVerificationIn):
-    email = data.email.strip().lower()
-    try:
-        ok = resend_verification_email(email)
-    except RuntimeError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
-
-    if not ok:
-        raise HTTPException(status_code=404, detail='Không tìm thấy tài khoản chưa xác thực với email này')
-
-    return {'message': 'Đã gửi lại mail xác thực'}
-
-
-@router.post('/verify-email')
-async def verify_email(data: VerifyEmailIn):
-    ok = verify_user_email(data.token)
-    if not ok:
-        raise HTTPException(status_code=400, detail='Mã xác thực không hợp lệ hoặc đã hết hạn')
-
-    return {'message': 'Xác thực email thành công'}
+    update_user(user_id, password=new_password)
+    return {'message': 'Đổi mật khẩu thành công'}
 
 
 @router.get('/google/login')

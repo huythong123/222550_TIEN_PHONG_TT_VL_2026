@@ -4,6 +4,7 @@ import time
 import jwt
 from typing import Optional, Dict, Any
 from app.config import settings
+from app.models.settings_store import get_setting
 
 logger = logging.getLogger(__name__)
 
@@ -23,8 +24,11 @@ class KlingService:
         }
 
     def generate_token(self) -> str:
-        ak = getattr(settings, 'KLING_ACCESS_KEY', None)
-        sk = getattr(settings, 'KLING_API_KEY', None)
+        # Prefer values stored in system settings (DB) so admin can update keys at runtime
+        ak_entry = get_setting('KLING_ACCESS_KEY')
+        sk_entry = get_setting('KLING_API_KEY')
+        ak = ak_entry.get('value') if ak_entry else getattr(settings, 'KLING_ACCESS_KEY', None)
+        sk = sk_entry.get('value') if sk_entry else getattr(settings, 'KLING_API_KEY', None)
         if not ak or not isinstance(ak, str) or not ak.strip():
             raise RuntimeError('KLING_ACCESS_KEY is not configured')
         if not sk or not isinstance(sk, str) or not sk.strip():

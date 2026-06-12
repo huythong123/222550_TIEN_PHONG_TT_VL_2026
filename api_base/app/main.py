@@ -9,6 +9,7 @@ from app.routers import admin_users as admin_router
 from app.routers import admin_resources as admin_resources_router
 from app.routers import admin_dashboard as admin_dashboard_router
 from app.routers import me_logs as me_logs_router
+from app.routers import user_chats as user_chats_router
 from app.routers import payment as payment_router
 from app.routers import public_resources as public_resources_router
 from app.models.user_store import init_db
@@ -57,6 +58,7 @@ app.include_router(admin_router.router, prefix="/api/v1/admin", tags=["Admin"])
 app.include_router(admin_resources_router.router, prefix="/api/v1/admin", tags=["Admin"])
 app.include_router(admin_dashboard_router.router, prefix="/api/v1/admin", tags=["Admin"])
 app.include_router(me_logs_router.router, prefix="/api/v1/me", tags=["Me"])
+app.include_router(user_chats_router.router, prefix="/api/v1/me", tags=["Me"])
 app.include_router(payment_router.router, prefix="/api/v1", tags=["Payment"])
 app.include_router(public_resources_router.router, prefix="/api/v1", tags=["Public"])
 

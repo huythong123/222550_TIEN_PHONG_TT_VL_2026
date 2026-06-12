@@ -11,84 +11,191 @@ class ScriptService:
         self.client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
         self.model = "gpt-4o"
 
-    async def generate_master_script(self, content: CleanedContent) -> MasterScript:
+    async def generate_master_script(self, content: CleanedContent, target_duration: int = None) -> MasterScript:
         logger.info(f"Đang lên kịch bản TVC cho sản phẩm: {content.title}")
+        # Provide guidance to the LLM about target duration so it can produce
+        # an appropriate pacing and amount of content for 15/30/60s variants.
+        dur_note = ''
+        if target_duration:
+            try:
+                td = int(target_duration)
+            except Exception:
+                td = None
+        else:
+            td = None
+
+        if td == 15:
+            dur_note = """
+HƯỚNG DẪN THEO THỜI LƯỢNG: VIDEO 15 GIÂY
+
+- Chỉ có 1 thông điệp quảng cáo chính.
+- Hook cực mạnh trong 3 giây đầu.
+- Body chỉ tập trung vào 1-2 lợi ích nổi bật nhất.
+- CTA trực tiếp.
+- Tổng lời thoại khoảng 20-35 từ.
+"""
+        elif td == 30:
+            dur_note = """
+HƯỚNG DẪN THEO THỜI LƯỢNG: VIDEO 30 GIÂY
+
+- Hook mạnh.
+- Body tập trung vào 2-3 lợi ích nổi bật.
+- Có nhịp tăng cảm xúc.
+- CTA rõ ràng.
+- Tổng lời thoại khoảng 50-80 từ.
+"""
+        elif td == 60:
+            dur_note = """
+HƯỚNG DẪN THEO THỜI LƯỢNG: VIDEO 60 GIÂY
+
+- Có thể kể một câu chuyện ngắn.
+- Hook → Vấn đề → Giải pháp → Lợi ích → CTA.
+- Tập trung xây dựng cảm xúc và niềm tin.
+- Tổng lời thoại khoảng 100-150 từ.
+"""
 
         prompt = f"""
-Bạn là biên kịch video ngắn chuyên nghiệp.
+Bạn là Senior Advertising Copywriter chuyên viết TVC quảng cáo ngắn.
 
-Bạn có khả năng viết:
-- Video quảng cáo
-- Video truyền thông
-- Video tóm tắt tin tức
-- Video giới thiệu nội dung
+MỤC TIÊU:
 
-Nhiệm vụ là truyền tải đúng trọng tâm nội dung đầu vào dưới dạng video ngắn hấp dẫn.
+Biến nội dung website thành một video quảng cáo ngắn hấp dẫn.
 
-Nhiệm vụ:
+KHÔNG viết theo kiểu:
+- Tóm tắt bài viết
+- Tin tức
+- Báo chí
+- Giới thiệu khô khan
 
-- Dựa trên dữ liệu đầu vào, tạo kịch bản video ngắn theo phong cách quảng cáo, truyền thông hoặc giới thiệu nội dung.
-- Xác định chủ đề chính từ tiêu đề và toàn bộ nội dung bài viết.
-- Tiêu đề là tín hiệu quan trọng nhất để xác định chủ đề chính.
-- Nội dung bài viết dùng để làm rõ và bổ sung cho chủ đề được thể hiện trong tiêu đề.
-- Hook phải phản ánh chủ đề được nêu trong tiêu đề.
-- Không được chọn một chi tiết nổi bật trong nội dung nếu chi tiết đó không đại diện cho chủ đề tổng thể.
-- Hook, Body và Call To Action phải bám sát chủ đề chính.
+Hãy viết như một TVC quảng cáo thực sự.
 
-QUAN TRỌNG:
+{dur_note}
 
-- Chủ đề chính phải phản ánh nội dung tổng thể của bài viết.
-- Không được chỉ tập trung vào một chi tiết hoặc một đoạn nhỏ nếu bài viết có nhiều nội dung quan trọng.
-- Nếu bài viết chứa nhiều sự kiện, chính sách, tính năng hoặc điểm nổi bật, hãy chọn và tóm tắt các nội dung quan trọng nhất.
-- Body phải bao quát các ý chính của bài viết theo mức độ quan trọng.
-- Không được làm sai lệch trọng tâm mà tiêu đề và nội dung đang truyền tải.
-- Không được biến một chi tiết phụ thành chủ đề chính của toàn bộ video.
-- Ưu tiên phản ánh bức tranh tổng thể trước khi đi vào các chi tiết nổi bật.
-- Nội dung phải giữ đúng bản chất thông tin gốc nhưng được diễn đạt hấp dẫn và dễ tiếp cận hơn.
+==================================================
+BƯỚC 1: XÁC ĐỊNH HERO SUBJECT
+==================================================
 
-Thông tin đầu vào:
-- Tiêu đề: {content.title}
-- Nguồn: {content.source_url}
-- Nội dung: {content.main_text[:5000]}
+Từ tiêu đề và nội dung, xác định chính xác:
 
-Yêu cầu đầu ra:
-- Trả về JSON hợp lệ với ĐÚNG 3 trường sau:
-  1) hook:
-- Mở đầu ngắn gọn, thu hút.
-- Thể hiện đúng chủ đề tổng thể.
+- Sản phẩm chính
+- Dịch vụ chính
+- Thương hiệu chính
+- Địa điểm chính
+- Hoặc giải pháp nổi bật nhất
 
-2) body:
-- Tóm tắt các nội dung quan trọng nhất.
-- Bao quát đầy đủ các ý chính.
-- Không tập trung quá mức vào một chi tiết đơn lẻ.
-- Nếu bài viết có nhiều ý chính, body phải đề cập ngắn gọn các ý quan trọng nhất.
-- Không dành phần lớn nội dung cho một ý duy nhất khi còn nhiều ý quan trọng khác.
-- Ưu tiên độ bao quát trước độ chi tiết.
+Đây là HERO SUBJECT.
 
-3) call_to_action:
-- Phù hợp với toàn bộ nội dung.
-- Khuyến khích người xem quan tâm, tìm hiểu hoặc theo dõi thêm.
-- Không được kêu gọi hành động trái với nội dung gốc.
-- Viết bằng tiếng Việt tự nhiên, súc tích.
-- Không thêm trường khác ngoài 3 trường trên.
-- CTA phải phù hợp với bản chất nội dung.
-- Với tin tức, chính sách hoặc kiến thức: khuyến khích người xem cập nhật, tìm hiểu hoặc theo dõi thêm.
-- Với sản phẩm hoặc dịch vụ: có thể kêu gọi trải nghiệm, đăng ký hoặc sử dụng.
-- Không được tạo CTA mang tính mua hàng nếu nội dung không phải sản phẩm hoặc dịch vụ.
-        """
+Toàn bộ kịch bản phải xoay quanh HERO SUBJECT.
+
+==================================================
+BƯỚC 2: XÁC ĐỊNH GIÁ TRỊ CỐT LÕI
+==================================================
+
+Tìm các yếu tố quan trọng nhất:
+
+- Lợi ích lớn nhất
+- Điểm nổi bật nhất
+- Điểm khác biệt nhất
+- Giá trị hấp dẫn nhất
+
+Chỉ giữ các thông tin giúp quảng bá HERO SUBJECT.
+
+Không cố gắng đưa mọi thông tin vào video.
+
+==================================================
+BƯỚC 3: VIẾT TVC
+==================================================
+
+HOOK
+
+- Thu hút ngay lập tức.
+- Tạo tò mò hoặc hứng thú.
+- Nêu lợi ích hoặc giá trị nổi bật.
+- Tối đa 1 câu.
+
+BODY
+
+- Tập trung vào lợi ích và giá trị.
+- Mỗi câu phải giúp làm nổi bật HERO SUBJECT.
+- Nội dung phải dễ chuyển thành cảnh quay.
+- Không lan man.
+- Không liệt kê quá nhiều thông tin.
+
+CALL TO ACTION
+
+- Ngắn gọn.
+- Tự nhiên.
+- Mạnh mẽ.
+- Khuyến khích người xem hành động.
+
+==================================================
+QUY TẮC QUAN TRỌNG
+==================================================
+
+- Không viết như bài báo.
+- Không viết như bản tin.
+- Không viết như bài tóm tắt.
+- Không liệt kê máy móc.
+- Không lặp lại cùng một ý.
+- Không thêm thông tin không tồn tại trong dữ liệu nguồn.
+- Luôn tập trung vào HERO SUBJECT.
+- Người xem phải hiểu ngay sản phẩm hoặc dịch vụ đang được quảng bá.
+
+==================================================
+THÔNG TIN ĐẦU VÀO
+==================================================
+
+Tiêu đề:
+{content.title}
+
+Nguồn:
+{content.source_url}
+
+Nội dung:
+{content.main_text[:5000]}
+
+==================================================
+YÊU CẦU ĐẦU RA
+==================================================
+
+Chỉ trả về JSON hợp lệ:
+
+{{
+  "hook": "...",
+  "body": "...",
+  "call_to_action": "..."
+}}
+
+Không thêm bất kỳ trường nào khác.
+"""
 
         try:
             response = await self.client.chat.completions.create(
                 model=self.model,
                 messages=[
                     {
-                        "role": "system",
-                        "content": "Bạn là chuyên gia viết kịch bản quảng cáo. Chỉ trả về JSON hợp lệ.",
-                    },
+    "role": "system",
+    "content": """
+Bạn là chuyên gia biên kịch TVC quảng cáo ngắn.
+
+Luôn xác định HERO SUBJECT trước khi viết.
+
+Ưu tiên:
+- Sản phẩm
+- Dịch vụ
+- Thương hiệu
+
+Tập trung vào lợi ích nổi bật nhất.
+
+Viết theo phong cách video quảng cáo chuyên nghiệp.
+
+Chỉ trả về JSON hợp lệ.
+""",
+},
                     {"role": "user", "content": prompt}
                 ],
                 response_format={ "type": "json_object" },
-                temperature=0.5
+                temperature=0.7
             )
             
             result_text = response.choices[0].message.content
@@ -102,6 +209,8 @@ Yêu cầu đầu ra:
 
             script = MasterScript(**{k: data[k].strip() for k in ("hook", "body", "call_to_action")})
             script.run_id = content.run_id
+            # record the target_duration used to generate this script
+            script.target_duration = td
             
             logger.info("Đã tạo xong kịch bản TVC thành công!")
             return script

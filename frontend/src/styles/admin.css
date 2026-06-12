@@ -1,0 +1,517 @@
+/* Admin panel styles */
+:root {
+  --bg: #f8fafc;
+  --panel: #fff;
+  --text-main: #0f172a;
+  --text-soft: #64748b;
+  --line: #e6eef8;
+  --accent: #0f766e;
+  --accent-soft: #ecfdf5;
+}
+
+.admin-root {
+  display: flex;
+  min-height: 100vh;
+  background: var(--bg);
+  font-family: Inter, system-ui, Segoe UI, Roboto, Arial
+}
+
+.admin-sidebar-wrapper {
+  width: 260px;
+  flex: 0 0 260px;
+  padding: 20px;
+  position: fixed;
+  top: 20px;
+  left: 20px;
+  height: calc(100vh - 40px);
+  overflow: auto;
+  z-index: 2
+}
+
+.admin-sidebar {
+  background: linear-gradient(180deg, #fff, #fbfdff);
+  border: 1px solid #eef2f6;
+  border-radius: 12px;
+  padding: 16px;
+  min-height: 100%
+}
+
+.admin-sidebar-title {
+  font-weight: 800;
+  color: var(--accent);
+  margin-bottom: 12px
+}
+
+.admin-menu-item {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  padding: 10px;
+  border-radius: 8px;
+  color: var(--text-main);
+  cursor: pointer
+}
+
+.admin-menu-item:hover {
+  background: #f1f5f9
+}
+
+.admin-menu-item.active {
+  background: var(--accent);
+  color: #fff
+}
+
+.admin-menu-icon {
+  font-size: 18px
+}
+
+.admin-main {
+  flex: 1;
+  padding: 20px;
+  margin-left: 300px;
+  padding-top: 94px;
+}
+
+.admin-header {
+  position: absolute;
+  /* Cố định Header */
+  top: 20px;
+  /* Sát mép trên */
+  right: 50px;
+  /* Sát mép phải */
+  left: 350px;
+  /* Cách trái bằng đúng độ rộng Sidebar và khoảng cách */
+  height: 70px;
+  /* Chiều cao cố định */
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 20px;
+  /* Padding trái phải */
+  background: var(--bg);
+  /* Nền trùng với nền chung */
+  border-bottom: 1px solid var(--line);
+  z-index: 5;
+  /* Nằm trên nội dung và sidebar */
+  backdrop-filter: blur(8px);
+}
+
+.admin-welcome {
+  margin: 0;
+  color: var(--text-soft)
+}
+
+.admin-title {
+  margin: 0
+}
+
+.admin-logout-btn {
+  background: transparent;
+  border: 1px solid #e6eef8;
+  padding: 8px 12px;
+  border-radius: 8px;
+  cursor: pointer
+}
+
+.admin-content {
+  display: block
+}
+
+.card {
+  background: var(--panel);
+  border: 1px solid #eef2f6;
+  border-radius: 16px;
+  padding: 22px;
+  box-shadow: 0 14px 36px rgba(15, 23, 42, 0.06)
+}
+
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 20px
+}
+
+.stat-card {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  padding: 18px;
+  border-radius: 20px;
+  background: linear-gradient(180deg, #ffffff, #f8fafc);
+  border: 1px solid rgba(226, 232, 240, 0.75);
+  min-height: 120px;
+  transition: transform .2s ease, box-shadow .2s ease
+}
+
+.stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 18px 38px rgba(15, 23, 42, 0.08)
+}
+
+.stat-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-weight: 800;
+  box-shadow: 0 10px 28px rgba(15, 118, 110, 0.08)
+}
+
+.stat-title {
+  font-size: 12px;
+  color: var(--text-soft);
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  margin-bottom: 5px
+}
+
+.stat-number {
+  font-size: 28px;
+  font-weight: 800;
+  color: var(--text-main)
+}
+
+.packages-panel {
+  display: grid;
+  grid-template-columns: 1.6fr 1fr;
+  gap: 24px;
+  align-items: start
+}
+
+.package-table-card {
+  padding: 18px
+}
+
+.table-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 14px
+}
+
+.table-card-header h4 {
+  margin: 0;
+  font-size: 1.1rem;
+  color: var(--text-main)
+}
+
+.table-responsive {
+  overflow-x: auto
+}
+
+.package-name-cell {
+  font-weight: 700;
+  color: var(--text-main)
+}
+
+.package-action-buttons {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap
+}
+
+.package-form-card {
+  width: 100%;
+  max-width: 360px;
+  flex-shrink: 0;
+  padding: 20px;
+  background: linear-gradient(180deg, #ffffff, #f9fdfb)
+}
+
+.package-form-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 16px
+}
+
+.package-form-row {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-weight: 600;
+  color: var(--text-main)
+}
+
+.package-form-row span {
+  font-size: 0.95rem
+}
+
+.package-form-input {
+  width: 100%;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 12px 14px;
+  background: #fff;
+  outline: none;
+  transition: all .18s ease
+}
+
+.package-form-input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 4px rgba(15, 118, 110, 0.08)
+}
+
+.package-form-actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap
+}
+
+.primary {
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  padding: 12px 16px;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: transform .15s ease
+}
+
+.primary:hover {
+  transform: translateY(-1px)
+}
+
+.secondary {
+  background: #f8fafc;
+  color: var(--text-main);
+  border: 1px solid #d1d5db;
+  padding: 12px 16px;
+  border-radius: 12px;
+  cursor: pointer
+}
+
+button.danger {
+  background: #fee2e2;
+  color: #b91c1c;
+  border: none;
+  padding: 8px 12px;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background .15s ease
+}
+
+button.danger:hover {
+  background: #fecaca
+}
+
+.dashboard-chart-card {
+  min-height: 420px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px
+}
+
+.dashboard-chart-card h4 {
+  margin: 0
+}
+
+.revenue-chart {
+  width: 100%;
+  height: 260px;
+  display: block
+}
+
+@media (max-width:1100px) {
+  .packages-panel {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width:760px) {
+
+  .package-table-card,
+  .package-form-card {
+    width: 100%;
+    max-width: none
+  }
+}
+
+.admin-table {
+  width: 100%;
+  border-collapse: collapse
+}
+
+.admin-table th,
+.admin-table td {
+  padding: 10px 8px;
+  border-bottom: 1px solid #f1f5f9;
+  text-align: left
+}
+
+.admin-table thead th {
+  background: transparent;
+  border-bottom: 2px solid #e6eef8
+}
+
+.user-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center
+}
+
+.user-badge {
+  background: #f8fafc;
+  padding: 6px 8px;
+  border-radius: 8px;
+  border: 1px solid #eef2f6
+}
+
+.video-modal-overlay {
+  position: fixed;
+  left: 0;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(15, 23, 42, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center
+}
+
+.video-modal {
+  background: #fff;
+  border-radius: 12px;
+  max-width: 900px;
+  width: 90%;
+  max-height: 90vh;
+  overflow: auto;
+  padding: 12px
+}
+
+.video-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px
+}
+
+.step-event-card {
+  border: 1px solid #eef2f6;
+  padding: 12px;
+  border-radius: 10px;
+  margin-bottom: 8px
+}
+
+.step-event-header {
+  display: flex;
+  justify-content: space-between
+}
+
+.step-credit-tag {
+  color: #ef4444;
+  margin-left: 8px
+}
+
+.event-detail-pre {
+  background: #f8fafc;
+  padding: 10px;
+  border-radius: 8px
+}
+
+.btn {
+  background: transparent;
+  border: 1px solid #e6eef8;
+  padding: 6px 10px;
+  border-radius: 8px;
+  cursor: pointer
+}
+
+.btn-link {
+  background: transparent;
+  border: none;
+  color: var(--accent);
+  cursor: pointer
+}
+
+@media (max-width:900px) {
+  .admin-root {
+    flex-direction: column
+  }
+
+  .admin-sidebar-wrapper {
+    width: 100%;
+    position: static;
+    top: auto;
+    left: auto;
+    height: auto;
+    overflow: visible;
+  }
+
+.admin-main {
+  flex: 1;
+  padding: 20px;
+  margin-left: 260px;    /* Khoảng cách bằng Sidebar */
+  margin-top: 70px;      /* Quan trọng: Đẩy nội dung xuống bằng chiều cao Header */
+}
+}
+
+/* Tối ưu thanh cuộn cho danh sách người dùng mới */
+.users-scroll::-webkit-scrollbar {
+  width: 5px;
+}
+
+.users-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.users-scroll::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+
+.users-scroll::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Tối ưu grid cho 3 khối bằng nhau */
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr); /* Ép buộc luôn có 3 cột bằng nhau */
+  gap: 24px;
+  width: 100%;
+}
+
+/* Đảm bảo card không bị biến dạng */
+.stat-card {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 24px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+}
+
+/* Responsive: Trên màn hình nhỏ, tự động đẩy xuống dòng */
+@media (max-width: 900px) {
+  .stat-grid {
+    grid-template-columns: 1fr; /* Mobile: 1 cột */
+  }
+}
+/* Tinh chỉnh lại thẻ stat-card để gọn gàng hơn */
+.stat-grid .stat-card {
+  padding: 16px !important;    /* Giảm padding nội bộ */
+  min-height: 100px !important; /* Giảm chiều cao tối thiểu */
+  border-radius: 16px !important;
+  gap: 12px !important;        /* Khoảng cách giữa icon và chữ */
+}
+
+.stat-grid .stat-icon {
+  width: 44px !important;      /* Thu nhỏ icon */
+  height: 44px !important;
+  border-radius: 12px !important;
+  font-size: 18px;             /* Cỡ icon nhỏ hơn */
+}
+
+.stat-grid .stat-title {
+  font-size: 11px !important;  /* Chữ tiêu đề nhỏ hơn */
+  margin-bottom: 2px !important;
+}
+
+.stat-grid .stat-number {
+  font-size: 20px !important;  /* Chữ số liệu nhỏ gọn, không bị tràn */
+}

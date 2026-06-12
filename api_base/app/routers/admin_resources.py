@@ -9,6 +9,9 @@ from app.models.transaction_store import list_transactions, create_transaction
 from app.models.video_store import list_videos, get_video, list_video_scenes, create_video
 from app.models.settings_store import list_settings, get_setting, set_setting
 from app.models.login_store import list_login_logs
+from app.config import settings
+from app.models.admin_store import add_admin_log
+import json
 
 router = APIRouter()
 
@@ -105,7 +108,40 @@ async def api_list_video_scenes(video_id: int, admin=Depends(require_admin)):
 
 @router.get('/settings')
 async def api_list_settings(admin=Depends(require_admin)):
-    return list_settings()
+    # Return DB settings, but ensure common API keys in environment appear as well
+    rows = list_settings()
+
+    # Descriptions for common integration keys (shown when description is empty)
+    descriptions_map = {
+        'OPENAI_API_KEY': 'OpenAI API key used for prompt/enhancement generation (GPT). Save here to let the app call OpenAI without editing .env. Changing here writes to DB only.',
+        'KLING_API_KEY': 'Kling secret key (used to sign JWT for Kling submission). Keep secret. Changing here writes to DB only.',
+        'KLING_ACCESS_KEY': 'Kling access key (public identifier). Required to generate JWT for Kling API.',
+        'SEPAY_API_KEY': 'SePay payment gateway API key for bank transfer verification.',
+    }
+
+    existing_keys = {r['key'] for r in rows}
+
+    # If a DB row exists but has no description, fill a helpful default from descriptions_map
+    for r in rows:
+        k = r.get('key')
+        if k in descriptions_map and (not r.get('description')):
+            r['description'] = descriptions_map[k]
+
+    # Ensure common keys from environment are visible in admin UI even if not stored in DB
+    fallback_keys = list(descriptions_map.keys())
+    for k in fallback_keys:
+        if k not in existing_keys:
+            val = getattr(settings, k, None)
+            if val is None or (isinstance(val, str) and not val.strip()):
+                continue
+            rows.append({
+                'id': None,
+                'key': k,
+                'value': str(val),
+                'description': descriptions_map.get(k, 'From environment (.env) - edit to store in DB'),
+            })
+
+    return rows
 
 
 class SettingIn(BaseModel):
@@ -124,4 +160,46 @@ async def api_get_setting(key: str, admin=Depends(require_admin)):
 
 @router.post('/settings')
 async def api_set_setting(payload: SettingIn, admin=Depends(require_admin)):
-    return set_setting(payload.key, payload.value, payload.description)
+    # record previous value for audit
+    prev = get_setting(payload.key)
+    try:
+        result = set_setting(payload.key, payload.value, payload.description)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+    # update in-memory settings object so parts of the app that read from settings use new value
+    try:
+        if hasattr(settings, payload.key):
+            try:
+                setattr(settings, payload.key, payload.value)
+            except Exception:
+                # ignore if cannot set on settings instance
+                pass
+    except Exception:
+        pass
+
+    # log admin action including old and new values (store as JSON details)
+    try:
+        admin_id = None
+        try:
+            admin_id = int(admin.get('sub'))
+        except Exception:
+            admin_id = None
+
+        details = {
+            'setting_key': payload.key,
+            'old_value': prev.get('value') if prev else None,
+            'new_value': payload.value,
+            'description': payload.description,
+        }
+        # Use admin_id if available, otherwise leave as None
+        try:
+            add_admin_log(admin_id or 0, 'update_setting', None, json.dumps(details))
+        except Exception as e:
+            # Log the exception so admins can diagnose why audit records fail to persist
+            import logging
+            logging.exception('Failed to add admin log for setting change: %s', str(e))
+    except Exception:
+        pass
+
+    return result

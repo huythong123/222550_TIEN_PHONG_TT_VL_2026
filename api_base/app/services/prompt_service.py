@@ -4,12 +4,16 @@ from typing import List
 from openai import AsyncOpenAI
 from app.config import settings
 from app.models.schemas import SceneData
+from app.models.settings_store import get_setting
 
 logger = logging.getLogger(__name__)
 
 class PromptService:
     def __init__(self):
-        self.client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
+        # Allow overriding the OpenAI API key via system settings stored in DB
+        openai_entry = get_setting('OPENAI_API_KEY')
+        openai_key = openai_entry.get('value') if openai_entry else settings.OPENAI_API_KEY
+        self.client = AsyncOpenAI(api_key=openai_key)
         self.model = "gpt-4o"
         
         # SYSTEM PROMPT ĐÃ ĐƯỢC TỐI ƯU HÓA HOÀN TOÀN CHO CHẠY QUẢNG CÁO (COMMERCIAL-GRADE AD CONVERSION)
@@ -46,8 +50,48 @@ Your prompt generation must follow a strict commercial storytelling funnel acros
 ==================================================
 LOCALIZATION RULES (VIETNAM MARKET)
 ==================================================
-When no specific country or ethnicity is specified, default to a realistic, contemporary Vietnamese commercial context:
-- Characters: Vietnamese facial features, natural golden/warm skin tones, black or dark brown hair. Friendly, professional, or highly expressive.
+When no specific ethnicity is specified, ALWAYS default to SOUTHERN VIETNAMESE (MEKONG DELTA) people.
+
+CHARACTER RULES:
+
+- Characters must be authentic Vietnamese people from the Mekong Delta region of Southern Vietnam.
+- NEVER use generic Asian appearance.
+- NEVER describe characters as Asian, East Asian, Southeast Asian, or mixed ethnicity.
+- Always describe them as Vietnamese.
+
+VISUAL TRAITS:
+
+- Warm tan Vietnamese skin tone.
+- Authentic Southern Vietnamese facial features.
+- Black hair.
+- Friendly smile.
+- Natural expressions.
+- Realistic local appearance.
+
+ENVIRONMENT:
+
+- Modern Mekong Delta lifestyle.
+- Southern Vietnamese houses.
+- Local coffee shops.
+- Riverside streets.
+- Modern Vietnamese cities in the South.
+- Authentic Vietnamese culture.
+
+FORBIDDEN:
+
+- Asian male
+- Asian female
+- East Asian
+- Southeast Asian
+- Korean appearance
+- Japanese appearance
+- Chinese appearance
+
+Always explicitly mention:
+
+"authentic Southern Vietnamese person"
+or
+"authentic Mekong Delta Vietnamese person"
 - Wardrobe: Popular local attire (modern office wear, energetic casual t-shirts, local school uniforms, standard helmets, or industry-specific aprons for F&B).
 - Environment/Infrastructure: Modern Vietnamese apartments, local minimalist cafes, contemporary offices, or clean local streets with realistic details (motorbikes like Honda/Yamaha, localized Vietnamese storefronts/signages blurred softly in the background).
 
@@ -106,7 +150,11 @@ Return a JSON object with a "scenes" list. Each entry MUST match the input scene
         input_json = json.dumps(scenes_input, ensure_ascii=False, indent=2)
 
         try:
-            response = await self.client.chat.completions.create(
+            # Create OpenAI client per-call so admin-updated OPENAI_API_KEY takes effect immediately
+            openai_entry = get_setting('OPENAI_API_KEY')
+            openai_key = openai_entry.get('value') if openai_entry else settings.OPENAI_API_KEY
+            client = AsyncOpenAI(api_key=openai_key)
+            response = await client.chat.completions.create(
                 model=self.model,
                 messages=[
                     {"role": "system", "content": self.system_prompt},
