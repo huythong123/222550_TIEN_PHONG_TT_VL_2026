@@ -90,3 +90,4 @@ api_base/test_scenes.json
 api_base/sql/init_db.sql
 api_base/sql/
 docs/
+.vercel
