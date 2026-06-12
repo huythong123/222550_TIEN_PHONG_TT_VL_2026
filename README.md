@@ -1,39 +1,33 @@
-# AutoAds System - Hướng dẫn cài đặt
+# AutoAds System
 
-Hệ thống hỗ trợ tạo video quảng cáo tự động bằng AI từ nội dung website.
+Hệ thống tạo video quảng cáo tự động bằng AI — nhập nội dung website, hệ thống tự động sinh kịch bản, phân cảnh, tạo prompt, lồng tiếng, ghép video.
+
+## Kiến trúc
+
+| Thành phần | Công nghệ |
+|---|---|
+| Backend API | Python / FastAPI |
+| Frontend | React / Vite |
+| Database | MySQL 8.0+ (SQLAlchemy ORM) |
+| AI | OpenAI (GPT, TTS), Kling AI (text2video) |
 
 ## Yêu cầu hệ thống
 
-Cài đặt trước các phần mềm sau:
+- Python 3.11+
+- Node.js 18+
+- MySQL 8.0+
+- FFmpeg
 
-* Python 3.11 trở lên
-* Node.js 18 trở lên
-* MySQL 8.0 trở lên
-* FFmpeg
+## Cài đặt nhanh
 
-Kiểm tra phiên bản:
-
-```bash
-python --version
-node -v
-npm -v
-ffmpeg -version
-```
-
----
-
-## 1. Clone dự án
+### 1. Clone
 
 ```bash
 git clone https://github.com/huythong123/222550_TIEN_PHONG_TT_VL_2026.git
 cd 222550_TIEN_PHONG_TT_VL_2026
 ```
 
----
-
-## 2. Tạo cơ sở dữ liệu
-
-Đăng nhập MySQL và tạo database:
+### 2. Database
 
 ```sql
 CREATE DATABASE AutoAds_System
@@ -41,249 +35,103 @@ CHARACTER SET utf8mb4
 COLLATE utf8mb4_unicode_ci;
 ```
 
----
-
-## 3. Cài đặt Backend
-
-Di chuyển vào thư mục backend:
+### 3. Backend
 
 ```bash
 cd api_base
-```
+python -m venv venv
 
-Tạo môi trường ảo:
+# Windows
+.\venv\Scripts\activate
+# Linux/macOS
+# source venv/bin/activate
 
-```bash
-python -m venv .venv
-```
-
-Kích hoạt môi trường:
-
-### Windows
-
-```powershell
-.\.venv\Scripts\Activate.ps1
-```
-
-### Linux / macOS
-
-```bash
-source .venv/bin/activate
-```
-
-Cài đặt thư viện:
-
-```bash
-pip install --upgrade pip
 pip install -r requirements.txt
 ```
 
----
-
-## 4. Tạo file cấu hình Backend
-
-Tạo file:
-
-```text
-api_base/.env
-```
-
-Nội dung mẫu:
+Tạo file `.env`:
 
 ```env
-# OpenAI
-OPENAI_API_KEY=
+SECRET_KEY=your_secret_key_here
 
-# Kling
-KLING_ACCESS_KEY=
-KLING_API_KEY=
-
-# Application
-SECRET_KEY=your_secret_key
-
-# Database
 MYSQL_HOST=127.0.0.1
 MYSQL_PORT=3306
 MYSQL_USER=root
 MYSQL_PASSWORD=
 MYSQL_DATABASE=AutoAds_System
 
-# Admin mặc định
 DEFAULT_ADMIN_USERNAME=admin
 DEFAULT_ADMIN_PASSWORD=admin123
 DEFAULT_ADMIN_EMAIL=admin@autoads.local
 
-# Google OAuth
-GOOGLE_CLIENT_ID=
-GOOGLE_CLIENT_SECRET=
+# API keys — chỉ cần khởi tạo lần đầu, sau đó quản lý qua Admin UI
+OPENAI_API_KEY=sk-...
+KLING_ACCESS_KEY=...
+KLING_API_KEY=...
+GOOGLE_CLIENT_ID=...
+GOOGLE_CLIENT_SECRET=...
 GOOGLE_REDIRECT_URI=http://localhost:8000/api/v1/auth/google/callback
+SEPAY_API_KEY=...
+SEPAY_ACCOUNT_NUMBER=...
+SEPAY_ACCOUNT_NAME=...
+SEPAY_BANK_BRAND=...
 
-# SePay
-SEPAY_API_KEY=
-SEPAY_ACCOUNT_NUMBER=
-SEPAY_ACCOUNT_NAME=
-SEPAY_BANK_BRAND=
-
-# Payment
 USD_TO_VND=24000
 PAYMENT_XOR_KEY=0x5EAFB
 PAYMENT_EXPIRE_MINUTES=60
-
-# Website
 NAME_WEB=AutoAds
 ```
 
----
-
-## 5. Chạy Backend
-
-Trong thư mục `api_base`:
+Chạy backend:
 
 ```bash
 python run_api.py
 ```
 
-hoặc:
+API docs tại: http://127.0.0.1:8000/docs
+
+### 4. Frontend
 
 ```bash
-uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
+cd frontend
+npm install
+npm run dev
 ```
 
-Truy cập:
+Truy cập: http://localhost:5173
 
-```text
-http://127.0.0.1:8000/docs
+### 5. Tài khoản Admin mặc định
+
 ```
+Username: admin
+Password: admin123
+```
+
+Sau khi đăng nhập, vào **Tích hợp & API Keys** để cập nhật API keys nếu cần.
 
 ---
-## 5.1 (Tùy chọn) Tạo gói Credits mặc định
 
-Hệ thống cho phép quản trị viên tạo, sửa và xóa các gói Credits trực tiếp trong trang quản trị.
+## Quản lý cấu hình qua Admin UI
 
-Tuy nhiên, để thuận tiện khi cài đặt lần đầu, có thể chạy script sau để tạo sẵn các gói mặc định:
+Tất cả API keys và cấu hình dịch vụ bên thứ ba được quản lý qua giao diện Admin (tab **Tích hợp & API Keys**), lưu trực tiếp vào database — **không cần sửa `.env` hay restart server**.
+
+Các dịch vụ hỗ trợ:
+
+| Tab | Cấu hình |
+|---|---|
+| OpenAI | API Key |
+| Kling AI | Access Key, Secret Key |
+| SePay (Ngân hàng) | API Key, Số tài khoản, Chủ tài khoản, Ngân hàng |
+| Google OAuth | Client ID, Client Secret, Redirect URI |
+| SMTP (Email) | Host, Port, Username, Password, From Email, From Name |
+
+---
+
+## Seed gói Credits (tùy chọn)
 
 ```bash
 cd api_base
 python scripts/seed_packages.py
 ```
 
-Lưu ý:
-- Script chỉ tạo dữ liệu khi chưa có gói cước nào trong hệ thống.
-- Sau khi đăng nhập bằng tài khoản Admin, có thể quản lý gói Credits trực tiếp trong trang quản trị mà không cần chạy lại script này.
-
----
-
-## 6. Tài khoản Admin
-
-Hệ thống đã có sẵn tài khoản quản trị mặc định:
-
-```text
-Username: admin
-Password: admin123
-```
-
-Nếu muốn tạo thêm tài khoản Admin mới, trong thư mục `api_base` chạy:
-
-```bash
-cd scripts
-python create_admin.py <username> <password> <email>
-```
-
-Ví dụ:
-
-```bash
-python create_admin.py admin2 Admin@123 admin2@example.com
-```
-
----
-
-## 7. Cài đặt Frontend
-
-Mở terminal mới:
-
-```bash
-cd frontend
-```
-
-Cài đặt thư viện:
-
-```bash
-npm install
-```
-
----
-
-## 8. Chạy Frontend
-
-```bash
-npm run dev
-```
-
-Truy cập:
-
-```text
-http://localhost:5173
-```
-
----
-
-# Cấu hình API Keys
-
-## OpenAI
-
-Tạo API Key tại:
-
-https://platform.openai.com/api-keys
-
-Điền vào:
-
-```env
-OPENAI_API_KEY=your_api_key
-```
-
----
-
-## Kling AI
-
-Đăng ký tài khoản và tạo API Key tại:
-
-https://kling.ai/dev/api-key
-
-Điền vào:
-
-```env
-KLING_ACCESS_KEY=
-KLING_API_KEY=
-```
-
----
-
-## Google OAuth
-
-Tạo OAuth Client tại:
-
-https://console.cloud.google.com
-
-Điền vào:
-
-```env
-GOOGLE_CLIENT_ID=
-GOOGLE_CLIENT_SECRET=
-```
-
----
-
-## SePay
-
-Đăng ký tài khoản và lấy API Key tại:
-
-https://my.sepay.vn
-
-Điền vào:
-
-```env
-SEPAY_API_KEY=
-SEPAY_ACCOUNT_NUMBER=
-SEPAY_ACCOUNT_NAME=
-SEPAY_BANK_BRAND=
-```
+Chỉ chạy khi lần đầu, sau đó quản lý gói trực tiếp trong Admin.
