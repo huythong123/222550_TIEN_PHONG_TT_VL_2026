@@ -6,7 +6,7 @@ export default function Hero() {
         <section className="lp-hero">
             {/* Video Background phủ từ đỉnh Header xuống hết phân vùng Hero */}
             <div className="hero-video-bg">
-                <video className="hero-bg-video" autoPlay muted loop playsInline src="/public/demoweb_gemini.mp4" />
+                <video className="hero-bg-video" autoPlay muted loop playsInline src="/demoweb_gemini.mp4" />
                 <div className="hero-video-overlay" /> {/* Lớp phủ mờ giúp chữ rõ nét hơn */}
             </div>
 
